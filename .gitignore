@@ -1,0 +1,39 @@
+# STM32/CMake build output
+firmware/**/build/
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.obj
+*.a
+*.su
+
+# IDE and editor state
+.vscode/
+.idea/
+*.code-workspace
+*.user
+*.suo
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local hardware-inventory photos may contain device identifiers or receipts.
+WhatsApp Image*.jpeg
+WhatsApp Image*.jpg
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
