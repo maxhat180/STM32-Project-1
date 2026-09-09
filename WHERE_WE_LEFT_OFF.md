@@ -193,3 +193,60 @@ all three NUCLEO endpoints so the wiring can be checked.
 - overengineer the initial milestone
 - use Arduino abstractions as the primary embedded architecture
 - deploy to Hetzner before checking what is already running there
+
+## Codex Progress Update - September 9, 2026
+
+This is the latest and authoritative continuation point. It supersedes the older
+"Immediate Next Action in Codex" section above.
+
+The project was re-inspected as a learning-first environmental-monitor project.
+Stage 0 repository and hardware orientation was completed without changing the
+generated architecture. The user reviewed the roles of CubeMX, CMake, Ninja, GNU
+Arm GCC, the linker script, ELF firmware, STM32CubeProgrammer, ST-LINK, and SWD.
+
+The existing board-only smoke test was rebuilt, flashed, and physically verified:
+
+- Windows detected the ST-LINK Virtual COM Port as `COM3`;
+- UART worked at 115200 baud, 8 data bits, no parity, and 1 stop bit;
+- reset produced the expected startup text;
+- B1 press and release events produced the expected UART messages;
+- LD2 and B1 both behaved correctly.
+
+Stage 1 GPIO work was then completed by the user in
+`firmware/stm32_telemetry/Core/Src/main.c`:
+
+- the LED toggle interval is now the compile-time macro
+  `LED_TOGGLE_INTERVAL_MS`, set to `250U` in a CubeMX-protected user section;
+- while B1 is released, LD2 toggles every 250 ms;
+- while active-low B1 is held, LD2 is forced steadily on;
+- the existing debounced UART event reporting remains intact.
+
+The user learned and physically confirmed that a toggle interval is half of a
+complete on/off cycle, that the board's electrical circuit determines the
+active-low input behavior, and that mutually exclusive `if`/`else if` control
+prevents timed toggling while the button is held.
+
+The user configured and built the Debug preset with GNU Arm GCC 14.3.1. After the
+source-only change, Ninja performed two incremental steps: recompiling `main.c`
+into its object file and relinking the ELF while reusing unchanged object files.
+The build completed without warnings and reported:
+
+- flash: 10,864 bytes of 512 KB (2.07%);
+- RAM: 1,728 bytes of 128 KB (1.32%).
+
+STM32CubeProgrammer CLI successfully wrote, verified, and reset the firmware. The
+new LED behavior and the unchanged UART behavior were both physically verified.
+The NUCLEO is currently connected and powered. No external sensors are wired.
+
+### Exact next learning stage
+
+Begin Stage 2: UART. First explain the existing data path from `UART_Write()` and
+`HAL_UART_Transmit()` through USART2 PA2/PA3, the onboard ST-LINK Virtual COM Port,
+and Windows COM3. Then give the user one small UART coding exercise, let the user
+implement it, review the change, build, flash, and physically test it. Do not skip
+ahead to ADC or sensor wiring until the Stage 2 learning check is complete.
+
+### Working-tree caution
+
+`AGENTS.md` and `tmp/` contain unrelated local changes and must not be included in
+the Stage 0/1 progress commit unless the user explicitly requests it.

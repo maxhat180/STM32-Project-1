@@ -34,6 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define LED_TOGGLE_INTERVAL_MS 250U
 
 /* USER CODE END PD */
 
@@ -118,7 +119,11 @@ int main(void)
     const GPIO_PinState button_state = HAL_GPIO_ReadPin(B1_USER_GPIO_Port,
                                                         B1_USER_Pin);
 
-    if ((now_ms - last_led_toggle_ms) >= 500U)
+    if (button_state == GPIO_PIN_RESET)
+    {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+    }
+    else if ((now_ms - last_led_toggle_ms) >= LED_TOGGLE_INTERVAL_MS)
     {
       HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
       last_led_toggle_ms = now_ms;
