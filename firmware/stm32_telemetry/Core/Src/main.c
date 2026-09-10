@@ -22,9 +22,10 @@
 #include "usart.h"
 #include "gpio.h"
 
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -35,6 +36,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define LED_TOGGLE_INTERVAL_MS 250U
+#define UART_HEARTBEAT_INTERVAL_MS 2000U
 
 /* USER CODE END PD */
 
@@ -97,13 +99,15 @@ int main(void)
   MX_ADC1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  uint32_t last_uart_heartbeat_ms = HAL_GetTick();
   static const char startup_message[] =
       "\r\nSTM32 telemetry smoke test ready\r\n"
       "LD2 is blinking; press blue B1 to test input.\r\n";
   GPIO_PinState previous_button_state = HAL_GPIO_ReadPin(B1_USER_GPIO_Port,
                                                           B1_USER_Pin);
   uint32_t last_led_toggle_ms = HAL_GetTick();
-
+  char adc_message[32];
   UART_Write(startup_message, (uint16_t)(sizeof(startup_message) - 1U));
 
   /* USER CODE END 2 */
@@ -116,6 +120,26 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     const uint32_t now_ms = HAL_GetTick();
+    if ((now_ms - last_uart_heartbeat_ms) >= UART_HEARTBEAT_INTERVAL_MS)
+    {
+      (void)HAL_ADC_Start(&hadc1);
+      if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
+      {
+        const uint32_t adc_raw = HAL_ADC_GetValue(&hadc1);
+        const int message_length = snprintf(adc_message,
+                                            sizeof(adc_message),
+                                            "ADC raw=%lu\r\n",
+                                            (unsigned long)adc_raw);
+
+        if ((message_length > 0) &&
+            (message_length < (int)sizeof(adc_message)))
+        {
+          UART_Write(adc_message, (uint16_t)message_length);
+        }
+      }
+      (void)HAL_ADC_Stop(&hadc1);
+      last_uart_heartbeat_ms = now_ms;
+    }
     const GPIO_PinState button_state = HAL_GPIO_ReadPin(B1_USER_GPIO_Port,
                                                         B1_USER_Pin);
 

@@ -250,3 +250,80 @@ ahead to ADC or sensor wiring until the Stage 2 learning check is complete.
 
 `AGENTS.md` and `tmp/` contain unrelated local changes and must not be included in
 the Stage 0/1 progress commit unless the user explicitly requests it.
+
+## Codex Progress Update - September 10, 2026
+
+This is the latest and authoritative continuation point. It supersedes the older
+next-action sections above.
+
+Stage 2 UART transmit work is complete. The user added a non-blocking two-second
+UART heartbeat using `HAL_GetTick()` and the existing `UART_Write()` wrapper. The
+firmware was built, flashed, and physically verified without changing the existing
+LD2 or B1 behavior. The UART path through USART2 PA2/PA3, the onboard ST-LINK
+Virtual COM Port, and Windows COM3 was reviewed. VS Code go-to-definition remains
+unresolved: the C/C++ and STM32Cube clangd extensions are installed, and the project
+was configured as an STM32Cube CMake project, but symbol navigation still did not
+work. This is not blocking firmware development.
+
+Stage 3 ADC bring-up has started. The user identified and wired the TMP36GZ while
+the board was unpowered, then completed a powered smoke test. Current wiring is:
+
+- TMP36 pin 1 (`+VS`) to NUCLEO `3V3`;
+- TMP36 pin 2 (`VOUT`) to NUCLEO Arduino `A0` / MCU `PA0`;
+- TMP36 pin 3 (`GND`) to NUCLEO `GND`.
+
+The NUCLEO remains connected and powered, and the TMP36 remains wired. The user
+confirmed normal LD2/UART operation and no sensor heating.
+
+CubeMX was intentionally simplified from a two-channel PA0/PA1 ADC scan to a
+single-channel PA0 conversion for this polling-based learning stage. The generated
+ADC1 configuration is now:
+
+- PA0 / ADC1 channel 0 only; PA1 is unassigned;
+- 12-bit, right-aligned conversion;
+- scan and continuous conversion disabled;
+- one software-triggered regular conversion;
+- PCLK2 divided by 4;
+- 84-cycle sampling time;
+- EOC after the single conversion;
+- DMA disabled.
+
+Application code in `Core/Src/main.c` now samples ADC1 every two seconds using
+`HAL_ADC_Start()`, `HAL_ADC_PollForConversion()`, `HAL_ADC_GetValue()`, and
+`HAL_ADC_Stop()`. It formats the raw count into a bounded 32-byte buffer with
+`snprintf()` and sends `ADC raw=<value>` through the existing UART wrapper. The
+poll result and formatted length are validated; the start/stop return values are
+temporarily ignored for this first learning pass and should receive explicit error
+handling later.
+
+The Debug build completed without warnings or errors using GNU Arm GCC 14.3.1:
+
+- flash: 14,548 bytes of 512 KB (2.77%);
+- RAM: 2,136 bytes of 128 KB (1.63%).
+
+STM32CubeProgrammer 2.20.0 wrote and verified the ELF successfully, then reset the
+MCU. Target voltage was 3.25 V. A direct ten-second COM3 capture at 115200 8-N-1
+produced stable TMP36 readings from approximately 868 to 881 counts, centered near
+875. Using 3.25 V as an initial reference estimate, this is about 694 mV and 19.4 C,
+which is plausible room temperature. This is not yet a calibrated measurement.
+COM3 was closed cleanly after capture and is currently free.
+
+### Exact next learning step
+
+Explain the 12-bit ADC conversion from raw counts to millivolts, then the TMP36
+transfer function from millivolts to Celsius. Give the user one small integer-math
+coding task that adds voltage and temperature to the existing two-second UART line.
+Use a signed type for temperature so values below 0 C remain representable, avoid
+floating-point `printf`, review the user's code before building, and then physically
+verify that gently warming the sensor changes the reading in the expected direction.
+
+Do not add PA1/photoresistor, DMA, CI/CD, or server work until this Stage 3
+temperature-conversion check is complete.
+
+### Working-tree caution after Stage 3 bring-up
+
+`AGENTS.md` and `tmp/` remain unrelated local changes and must not be committed.
+The STM32 VS Code configuration flow also created untracked
+`firmware/stm32_telemetry/.settings/` and
+`firmware/stm32_telemetry/.gitignore`; they were treated as incidental local IDE
+metadata and intentionally excluded from this progress commit.
