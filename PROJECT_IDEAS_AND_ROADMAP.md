@@ -6,6 +6,21 @@ The intention is NOT to create six unrelated repositories.
 
 Treat them as phases of one evolving embedded DevOps platform.
 
+## Progress Snapshot - September 14, 2026
+
+- Phase 1 is partially complete: GPIO, UART, TMP36 temperature, and photoresistor
+  light telemetry are working on the physical NUCLEO-F446RE.
+- Phase 2 has an operational baseline: GitHub Actions cross-compiles Release
+  firmware and publishes timestamped, checksummed ELF/BIN/HEX deployment packages.
+  The one-command Windows flashing path has been tested on the real board.
+- Unit tests, static analysis, explicit size gates, tagged releases, and signing
+  remain future Phase 2 increments.
+- Hardware-in-the-loop CI, gateway, server, observability, and advanced firmware
+  phases have not started.
+
+The immediate next increment is a host-testable sensor-conversion module plus unit
+tests executed by GitHub Actions.
+
 ---
 
 # 1. STM32 Environmental / Sensor Monitoring Device

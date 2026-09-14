@@ -23,19 +23,12 @@ The goal is to create a portfolio-quality embedded + DevOps system that demonstr
 - observability
 - DevSecOps practices
 
-## Available Hardware Known So Far
+## Available Hardware
 
-Confirmed:
-- STMicroelectronics NUCLEO-F446RE
-- Arduino board
-- Arduino starter kit
-- multiple sensors/modules
-- jumper wires
-- 2 breadboards
-
-The exact sensor/module inventory has NOT yet been captured.
-
-See `HARDWARE_INVENTORY.md`.
+The inventory has been captured and includes the NUCLEO-F446RE, Arduino Uno Rev3,
+SparkFun Essential Sensor Kit V2, Seeed Sidekick Basic Kit V2, breadboards,
+jumpers, and sensor components. See `HARDWARE_INVENTORY.md` for the authoritative
+component-level record.
 
 ## Primary Board
 
@@ -72,6 +65,24 @@ Hetzner
   +--> dashboard
 
 The first milestone should work even before every future component exists.
+
+## Current Progress - September 14, 2026
+
+The first physical firmware milestone is operational:
+
+- CubeMX/HAL C firmware builds with CMake, Ninja, and GNU Arm GCC;
+- LD2 output and active-low B1 input work with debounced UART events;
+- USART2 telemetry reaches Windows through the onboard ST-LINK VCP on COM3;
+- a TMP36 on PA0 reports integer-converted temperature telemetry;
+- a photoresistor divider on PA1 reports raw light telemetry;
+- both ADC channels have been physically stimulated and verified;
+- GitHub Actions builds Release firmware and publishes UTC-timestamped deployment
+  ZIPs containing ELF, BIN, HEX, maps, provenance, and checksums;
+- a downloaded CI artifact has been checksum-verified and flashed successfully to
+  the physical NUCLEO using the repository's one-command PowerShell helper.
+
+The next step is separating pure sensor conversion logic from HAL code, adding
+host-side C unit tests, and running those tests in CI.
 
 ## Learning Strategy
 

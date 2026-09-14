@@ -327,3 +327,125 @@ The STM32 VS Code configuration flow also created untracked
 `firmware/stm32_telemetry/.settings/` and
 `firmware/stm32_telemetry/.gitignore`; they were treated as incidental local IDE
 metadata and intentionally excluded from this progress commit.
+
+## Codex Progress Update - September 14, 2026
+
+This is the latest and authoritative continuation point. It supersedes every
+older next-action section above.
+
+### Stage 3 complete: TMP36 temperature conversion
+
+The user extended the two-second ADC telemetry with integer-only conversion from
+the 12-bit ADC count to millivolts and TMP36 temperature:
+
+```text
+voltage_mV = raw * 3300 / 4095
+temperature_x10_C = voltage_mV - 500
+```
+
+Temperature uses a signed type so sub-zero values remain representable, and the
+firmware avoids floating-point `printf`. Typical ambient readings were about
+21.8-22.4 C. Gently warming the TMP36 raised the reported value to about 24.7 C,
+then it fell toward ambient after release. This physically verified the complete
+sensor-to-UART path. Commit `287fd57` records this stage.
+
+### Stage 4 complete: two-channel ADC and photoresistor
+
+CubeMX now configures ADC1 as a two-rank polling sequence:
+
+- rank 1: `PA0 / ADC1_IN0`, TMP36, 84-cycle sampling;
+- rank 2: `PA1 / ADC1_IN1`, photoresistor divider, 84-cycle sampling;
+- 12-bit right-aligned data;
+- scan mode enabled with two conversions;
+- software trigger, continuous/discontinuous conversion disabled;
+- end-of-conversion after each conversion;
+- DMA disabled.
+
+The application starts ADC1 once, separately polls and reads rank 1 and rank 2,
+then stops ADC1. It reports temperature raw count, nominal-reference millivolts,
+temperature in tenths of a degree Celsius, and raw light count on one UART line.
+
+The photoresistor divider is wired as:
+
+```text
+3V3 -- photoresistor --+-- A1 / PA1
+                       |
+                     10 kOhm
+                       |
+                      GND
+```
+
+With this orientation, brighter light produces a higher ADC count. The user
+physically verified approximately 3720 uncovered and 1768 covered, with the value
+returning to approximately 3729 when uncovered. The TMP36 continued reporting
+stable ambient temperature. The Debug build completed without warnings at 14,704
+bytes flash (2.80%) and 2,136 bytes RAM (1.63%). Commit `7517256` records this
+stage.
+
+### Stage 5 complete: firmware CI artifact and one-command flashing
+
+The repository now contains `.github/workflows/firmware-ci.yml`. It runs on pushes
+to `main`, pull requests, and manual dispatch. The hosted Ubuntu job:
+
+1. installs the ARM bare-metal toolchain, Newlib, Ninja, and ZIP tooling;
+2. configures and builds the CMake Release preset;
+3. generates ELF, BIN, Intel HEX, linker-map, memory-usage, provenance, and
+   SHA-256 checksum files;
+4. packages them as a UTC-timestamped ZIP such as
+   `stm32-telemetry-20260914-101326-utc.zip`;
+5. uploads that ZIP directly as a 30-day GitHub Actions artifact.
+
+Third-party workflow execution is minimized. The official GitHub checkout and
+upload-artifact actions are pinned to their full v7.0.1 commit SHAs, workflow
+permissions are read-only, and checkout credentials are not persisted.
+
+The first hosted run, GitHub Actions run `34832037856`, passed every step in 35
+seconds. Its artifact was downloaded and independently checksum-tested. The user
+then downloaded the same artifact, extracted it under Windows Downloads, and ran
+the packaged `flash-firmware.ps1`. The script verified the Intel HEX SHA-256,
+flashed through STM32CubeProgrammer over ST-LINK/SWD, verified the write, and reset
+the MCU successfully. This proves the full path from Git push through hosted build
+artifact to physical-board deployment. Commit `1f3ab23` records this stage.
+
+The repository copy of the helper can also find the newest matching artifact ZIP
+in the Windows Downloads folder automatically:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File `
+  "C:\Users\Owner\Documents\Work\Embedded\tools\flash-firmware.ps1"
+```
+
+### Current hardware state
+
+Most recently verified:
+
+- NUCLEO-F446RE connected over its ST-LINK USB connection;
+- TMP36 wired to `3V3`, `A0/PA0`, and `GND`;
+- photoresistor/10 kOhm divider wired to `3V3`, `A1/PA1`, and `GND`;
+- LD2, B1, USART2/COM3, temperature telemetry, and light telemetry operational;
+- the GitHub-built Release artifact flashed successfully and ran on the board.
+
+Do not assume COM3 is still open when resuming; inspect it as needed.
+
+### Exact next learning stage
+
+Begin Stage 6 by separating pure sensor-conversion logic from HAL/peripheral code.
+Create a small application-owned C module for ADC-count-to-millivolt and TMP36
+temperature conversion, keeping generated files and hardware access separate.
+Add host-side unit tests for boundary and representative cases, including raw ADC
+counts 0 and 4095 and a temperature below 0 C. Extend GitHub Actions to compile and
+run those tests before building/uploading firmware.
+
+Keep the work learning-first: briefly explain why pure functions are testable on
+the host, give the user a small implementation task, review it, and then automate
+the tests. After this stage, address explicit ADC start/stop/poll error handling,
+structured telemetry, and the serial gateway. Do not jump to DMA, RTOS, or Hetzner
+deployment yet.
+
+### Working-tree caution
+
+`AGENTS.md` contains an unrelated tracked modification. `tmp/`,
+`firmware/stm32_telemetry/.settings/`, and
+`firmware/stm32_telemetry/.gitignore` are unrelated/untracked local content. Do not
+stage, commit, delete, or modify them unless the user explicitly changes this
+instruction.
