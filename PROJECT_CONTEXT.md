@@ -66,6 +66,74 @@ Hetzner
 
 The first milestone should work even before every future component exists.
 
+The network path should be developed locally before depending on the remote
+server:
+
+```text
+STM32 sensors
+  |
+  | USB UART
+  v
+Python gateway on the laptop
+  |
+  | MQTT
+  v
+Mosquitto in Docker on the laptop
+  |
+  v
+subscriber / storage / dashboard
+```
+
+Once this path is understood and reliable, the broker and downstream services can
+move to the existing Hetzner server.
+
+## Required Embedded Coverage
+
+The project should deliberately include, through real increments rather than
+isolated toy repositories:
+
+- deeper bidirectional UART work, including framing, parsing, commands, timeouts,
+  and malformed-message handling;
+- I2C configuration, register transactions, addressing, ACK/NACK behavior, and an
+  actual sensor driver;
+- SPI configuration, chip-select handling, clock polarity/phase, full-duplex
+  transfers, and an actual sensor or peripheral driver;
+- additional sensors chosen from the existing inventory where practical;
+- debugging of physical buses with evidence-driven tests.
+
+## Long-Term Custom Hardware Goal
+
+The eventual dream project is a compact custom PCB containing:
+
+- a microcontroller;
+- a temperature sensor;
+- power regulation and protection;
+- programming/debug access;
+- a reliable timestamp source;
+- an optional Bluetooth or LTE communications module;
+- the antenna clearance, connectors, and enclosure considerations required by the
+  selected transport.
+
+The board should send timestamped temperature data to a remote service, most
+likely with MQTT or HTTPS. Bluetooth normally implies a nearby phone or gateway;
+LTE can reach the service independently but brings greater power, antenna, SIM,
+certification, and sourcing complexity.
+
+RF-capable parts are a project constraint because importing them into Israel may
+involve difficult customs review and fees. Do not let this block the firmware,
+gateway, or first custom-PCB revision. Keep the application independent of its
+transport and prefer a modular architecture:
+
+```text
+sensor application -> telemetry interface -> UART / Bluetooth / LTE transport
+```
+
+An early custom board may place the MCU, temperature sensor, power, and debug
+hardware on the main PCB while exposing power and UART/SPI through a connector for
+a separately sourced radio module. When RF hardware enters the active milestone,
+verify current Israeli import/regulatory requirements and locally available or
+pre-approved modules before selecting parts or finalizing the layout.
+
 ## Current Progress - September 14, 2026
 
 The first physical firmware milestone is operational:

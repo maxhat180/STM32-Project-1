@@ -46,6 +46,22 @@ usage, build provenance, SHA-256 checksums, and `flash-firmware.ps1`. The first 
 `stm32-telemetry-20260914-101326-utc.zip`, extracted it, and successfully used the
 packaged script to verify and flash the real NUCLEO over ST-LINK/SWD.
 
+The required long-term learning path includes deeper bidirectional UART work,
+message framing/parsing and error handling, I2C with a real sensor driver, SPI with
+a real sensor or peripheral driver, and additional sensors. Before using Hetzner,
+build a local end-to-end path: a Python gateway reads COM3 and publishes sensor
+telemetry to a Mosquitto MQTT broker running in Docker on the laptop. The gateway
+should initially supply the wall-clock timestamp.
+
+The eventual dream project is a compact custom PCB with a microcontroller,
+temperature sensor, power/debug circuitry, a reliable timestamp strategy, and an
+optional Bluetooth or LTE module that sends temperature data to a remote service.
+RF-capable imports into Israel can involve difficult customs checks and fees, so
+keep transport replaceable and do not let RF sourcing block progress. A first PCB
+may expose UART/SPI and power to a separate locally obtainable radio module. Verify
+current Israeli requirements and viable local/pre-approved parts before selecting
+or directly integrating RF hardware.
+
 Begin Stage 6: separate pure ADC/sensor conversion logic from HAL and peripheral
 code. Briefly explain why pure functions can compile and run as host tests without
 STM32 hardware. Propose a small application-owned C module for ADC-count-to-mV and
@@ -54,9 +70,11 @@ before implementing the rest. Add host-side unit tests for boundary and
 representative cases, including raw counts 0 and 4095 and a below-zero TMP36 case.
 Extend GitHub Actions so tests must pass before firmware packaging.
 
-After Stage 6, address explicit ADC start/stop/poll error handling, clean structured
-telemetry, and then the serial gateway. Do not jump to DMA, RTOS, hardware-in-the-
-loop infrastructure, or Hetzner deployment yet.
+After Stage 6, address explicit ADC start/stop/poll error handling and clean
+structured telemetry. Then cover bidirectional UART and build the laptop
+serial-to-MQTT gateway. Follow with I2C, SPI, and additional sensors before moving
+the telemetry stack to Hetzner. Do not jump directly to DMA, RTOS, hardware-in-the-
+loop infrastructure, RF integration, or Hetzner deployment.
 
 This is a hands-on embedded C learning project. Work in small stages, explain the
 basic mental model first, let me write important embedded C code, and review errors

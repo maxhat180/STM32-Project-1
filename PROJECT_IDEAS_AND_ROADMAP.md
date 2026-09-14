@@ -21,6 +21,12 @@ Treat them as phases of one evolving embedded DevOps platform.
 The immediate next increment is a host-testable sensor-conversion module plus unit
 tests executed by GitHub Actions.
 
+The longer path must also include deeper UART work, I2C and SPI sensor drivers,
+additional physical sensors, a laptop-hosted MQTT gateway/broker milestone, and an
+eventual compact custom temperature-telemetry PCB. RF-component availability and
+Israeli import/customs requirements are explicit design and procurement
+constraints for the Bluetooth/LTE phase.
+
 ---
 
 # 1. STM32 Environmental / Sensor Monitoring Device
@@ -45,6 +51,7 @@ Potential inputs:
 - GPIO
 - ADC
 - UART
+- UART receive, framing, parsing, commands, timeouts, and error recovery
 - I2C
 - SPI
 - timers
@@ -202,17 +209,19 @@ This should happen after the initial bare-metal/HAL system is working.
 
 ## Goal
 
-Connect the physical embedded device to the user's Hetzner server.
+First connect the physical embedded device to a local MQTT system on the user's
+laptop. After that path works, move the broker and downstream services to the
+user's Hetzner server.
 
 Potential architecture:
 
 STM32
   |
   v
-Serial / gateway
-  |
-  v
-MQTT
+USB serial / Python gateway
+   |
+   v
+Mosquitto MQTT (laptop first, Hetzner later)
   |
   v
 Backend ingestion
@@ -248,6 +257,10 @@ Possible monitored values:
 - TLS
 - service health
 - log management
+
+The gateway should initially add trustworthy wall-clock timestamps because the
+MCU does not yet have a persistent synchronized time source. A later firmware/PCB
+phase can introduce an RTC, backup power, or network-assisted time synchronization.
 
 ---
 
@@ -347,29 +360,65 @@ This is an advanced optional extension.
 
 ---
 
+# 8. Compact Custom Temperature-Telemetry PCB
+
+## Goal
+
+Turn the proven development-board system into a compact custom PCB containing a
+microcontroller, temperature sensor, power circuitry, debug/programming access,
+and an optional Bluetooth or LTE transport. The device should send timestamped
+temperature telemetry to the project's MQTT or HTTPS ingestion path.
+
+Develop it incrementally:
+
+1. freeze tested sensor, telemetry, and transport interfaces in firmware;
+2. define power, timestamp accuracy, reporting interval, enclosure, and size
+   requirements;
+3. build a non-RF first revision or use a connectorized radio module;
+4. perform schematic review, PCB layout, design-rule checks, and bring-up planning;
+5. source RF modules locally or through a viable approved route;
+6. verify current Israeli regulatory/import requirements before committing to a
+   Bluetooth/LTE module and antenna design;
+7. integrate RF only after the core PCB and wired telemetry path are proven.
+
+Keep the transport replaceable so RF sourcing cannot block the rest of the system:
+
+```text
+Sensors -> application telemetry -> UART / Bluetooth / LTE adapter
+```
+
+Important skills include schematic capture, component selection, power budgeting,
+PCB layout, decoupling, ESD/protection, SWD access, antenna keep-outs, EMC-aware
+design, board bring-up, and design-for-test.
+
+---
+
 # Recommended Compressed Sequence
 
 Because time is limited:
 
 ## Milestone 1
-STM32 + 2-3 sensors + structured serial telemetry
+STM32 GPIO, UART transmit, TMP36, and photoresistor bring-up (complete)
 
 ## Milestone 2
-GitHub Actions automated firmware build/test/artifacts
+GitHub Actions build and flashable timestamped artifacts (baseline complete)
 
 ## Milestone 3
-Telemetry path to Hetzner
+Pure firmware modules, host unit tests, ADC hardening, and structured telemetry
 
 ## Milestone 4
-PostgreSQL + dashboard
+Bidirectional UART plus Python gateway and Mosquitto MQTT on the laptop
 
 ## Milestone 5
-Hardware-in-the-loop CI
+I2C, SPI, and additional physical sensor drivers
 
 ## Milestone 6
-RTOS / Zephyr refactor
+Move MQTT/ingestion to Hetzner; add PostgreSQL and a dashboard
 
 ## Milestone 7
-Secure firmware releases
+Hardware-in-the-loop CI, watchdog/fault work, and RTOS/Zephyr increment
+
+## Milestone 8
+Secure firmware releases and compact custom temperature-telemetry PCB
 
 Only after those are working should CAN / multi-controller work be considered.

@@ -427,6 +427,32 @@ Most recently verified:
 
 Do not assume COM3 is still open when resuming; inspect it as needed.
 
+### Long-term direction clarified
+
+The project must remain one coherent system while deliberately covering:
+
+- more UART, including receive, framing/parsing, commands, timeouts, and recovery;
+- I2C with a real sensor driver;
+- SPI with a real sensor or peripheral driver;
+- additional sensors from the available inventory;
+- a local end-to-end telemetry path in which a Python laptop gateway reads the
+  NUCLEO USB serial stream and publishes to a Mosquitto MQTT broker running in
+  Docker on the laptop;
+- migration of that proven MQTT/ingestion path to Hetzner later.
+
+The user's long-term dream project is a compact custom PCB containing a
+microcontroller, temperature sensor, power/debug support, a timestamp strategy,
+and eventually a Bluetooth or LTE module that sends timestamped temperature data
+to a remote service. Bluetooth generally requires a nearby gateway, whereas LTE
+can provide independent connectivity at greater power and integration complexity.
+
+Importing RF-capable components into Israel may involve difficult customs checks
+and fees, so RF sourcing is an explicit project constraint. Preserve a replaceable
+transport boundary and do not allow RF procurement to block firmware, local MQTT,
+or a first custom PCB. A sensible first PCB can expose UART/SPI and power for a
+separate radio module, with direct RF integration deferred until current Israeli
+requirements and locally obtainable modules have been researched.
+
 ### Exact next learning stage
 
 Begin Stage 6 by separating pure sensor-conversion logic from HAL/peripheral code.
@@ -438,9 +464,11 @@ run those tests before building/uploading firmware.
 
 Keep the work learning-first: briefly explain why pure functions are testable on
 the host, give the user a small implementation task, review it, and then automate
-the tests. After this stage, address explicit ADC start/stop/poll error handling,
-structured telemetry, and the serial gateway. Do not jump to DMA, RTOS, or Hetzner
-deployment yet.
+the tests. After this stage, address explicit ADC start/stop/poll error handling
+and structured telemetry, followed by bidirectional UART and the laptop
+serial-to-MQTT gateway. Then add I2C, SPI, and more sensors before migrating the
+telemetry platform to Hetzner. Do not jump directly to DMA, RTOS, RF hardware, or
+Hetzner deployment.
 
 ### Working-tree caution
 
