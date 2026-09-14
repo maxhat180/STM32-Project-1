@@ -22,7 +22,6 @@
 #include "usart.h"
 #include "gpio.h"
 
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
@@ -107,7 +106,7 @@ int main(void)
   GPIO_PinState previous_button_state = HAL_GPIO_ReadPin(B1_USER_GPIO_Port,
                                                           B1_USER_Pin);
   uint32_t last_led_toggle_ms = HAL_GetTick();
-  char adc_message[64];
+  char adc_message[96];
   UART_Write(startup_message, (uint16_t)(sizeof(startup_message) - 1U));
 
   /* USER CODE END 2 */
@@ -125,16 +124,20 @@ int main(void)
       (void)HAL_ADC_Start(&hadc1);
       if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
       {
-        const uint32_t adc_raw = HAL_ADC_GetValue(&hadc1);
-        uint32_t voltage_mv = (adc_raw * 3300U) / 4095U;
-        int32_t temperature_tenths_c = (int32_t)voltage_mv - 500;
-        const int message_length = snprintf(adc_message,
-                                            sizeof(adc_message),
-                                            "ADC raw=%lu, voltage_mv=%lu,  temp_x10_C=%ld\r\n", (unsigned long)adc_raw, (unsigned long)voltage_mv, (long)temperature_tenths_c);
-        if ((message_length > 0) &&
-            (message_length < (int)sizeof(adc_message)))
+        const uint32_t temp_raw = HAL_ADC_GetValue(&hadc1);
+        if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
         {
-          UART_Write(adc_message, (uint16_t)message_length);
+          const uint32_t light_raw = HAL_ADC_GetValue(&hadc1);
+          uint32_t voltage_mv = (temp_raw * 3300U) / 4095U;
+          int32_t temperature_tenths_c = (int32_t)voltage_mv - 500;
+          const int message_length = snprintf(adc_message,
+                                            sizeof(adc_message),
+                                            "ADC raw=%lu, voltage_mv=%lu,  temp_x10_C=%ld, light_raw=%lu\r\n", (unsigned long)temp_raw, (unsigned long)voltage_mv, (long)temperature_tenths_c, (unsigned long)light_raw);
+          if ((message_length > 0) &&
+            (message_length < (int)sizeof(adc_message)))
+          {
+            UART_Write(adc_message, (uint16_t)message_length);
+          }
         }
       }
       (void)HAL_ADC_Stop(&hadc1);
