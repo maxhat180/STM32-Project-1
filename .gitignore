@@ -1,5 +1,6 @@
 # STM32/CMake build output
 firmware/**/build/
+firmware/**/dist/
 build/
 cmake-build-*/
 CMakeFiles/
@@ -36,4 +37,3 @@ WhatsApp Image*.jpg
 !.env.example
 *.pem
 *.key
-

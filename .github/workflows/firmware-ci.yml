@@ -1,0 +1,123 @@
+name: Firmware CI
+
+run-name: Firmware CI - ${{ github.ref_name }} - ${{ github.sha }}
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build STM32 firmware
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: firmware/stm32_telemetry
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install ARM build tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            gcc-arm-none-eabi \
+            libnewlib-arm-none-eabi \
+            ninja-build \
+            zip
+          cmake --version
+          ninja --version
+          arm-none-eabi-gcc --version
+
+      - name: Configure Release build
+        run: cmake --preset Release
+
+      - name: Build Release firmware
+        run: cmake --build --preset Release
+
+      - name: Package timestamped firmware artifact
+        id: package
+        env:
+          FLASH_HELPER: ${{ github.workspace }}/tools/flash-firmware.ps1
+        run: |
+          set -euo pipefail
+
+          timestamp="$(date -u +'%Y%m%d-%H%M%S')"
+          package_name="stm32-telemetry-${timestamp}-utc"
+          build_dir="build/Release"
+          package_dir="dist/${package_name}"
+          package_file="dist/${package_name}.zip"
+
+          mkdir -p "${package_dir}"
+
+          cp "${build_dir}/stm32_telemetry.elf" "${package_dir}/"
+          cp "${build_dir}/stm32_telemetry.map" "${package_dir}/"
+          cp "${FLASH_HELPER}" "${package_dir}/flash-firmware.ps1"
+
+          arm-none-eabi-objcopy -O binary \
+            "${build_dir}/stm32_telemetry.elf" \
+            "${package_dir}/stm32_telemetry.bin"
+          arm-none-eabi-objcopy -O ihex \
+            "${build_dir}/stm32_telemetry.elf" \
+            "${package_dir}/stm32_telemetry.hex"
+          arm-none-eabi-size "${build_dir}/stm32_telemetry.elf" \
+            | tee "${package_dir}/memory-usage.txt"
+
+          {
+            echo "artifact=${package_name}.zip"
+            echo "built_utc=$(date -u --iso-8601=seconds)"
+            echo "git_commit=${GITHUB_SHA}"
+            echo "git_ref=${GITHUB_REF}"
+            echo "github_run=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            arm-none-eabi-gcc --version | sed -n '1s/^/compiler=/p'
+          } > "${package_dir}/BUILD_INFO.txt"
+
+          (
+            cd "${package_dir}"
+            sha256sum \
+              stm32_telemetry.elf \
+              stm32_telemetry.bin \
+              stm32_telemetry.hex \
+              stm32_telemetry.map \
+              memory-usage.txt \
+              BUILD_INFO.txt \
+              flash-firmware.ps1 \
+              > SHA256SUMS.txt
+            zip -9 "../${package_name}.zip" \
+              stm32_telemetry.elf \
+              stm32_telemetry.bin \
+              stm32_telemetry.hex \
+              stm32_telemetry.map \
+              memory-usage.txt \
+              BUILD_INFO.txt \
+              SHA256SUMS.txt \
+              flash-firmware.ps1
+          )
+
+          echo "filename=${package_name}.zip" >> "${GITHUB_OUTPUT}"
+          echo "Firmware package: ${package_file}"
+
+      - name: Upload timestamped firmware artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: firmware/stm32_telemetry/dist/${{ steps.package.outputs.filename }}
+          archive: false
+          retention-days: 30
+          if-no-files-found: error
