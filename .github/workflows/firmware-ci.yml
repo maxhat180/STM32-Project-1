@@ -38,6 +38,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
+            gcc \
             gcc-arm-none-eabi \
             libnewlib-arm-none-eabi \
             ninja-build \
@@ -45,6 +46,15 @@ jobs:
           cmake --version
           ninja --version
           arm-none-eabi-gcc --version
+
+      - name: Configure host unit tests
+        run: cmake -S tests -B build/host-tests -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build host unit tests
+        run: cmake --build build/host-tests
+
+      - name: Run host unit tests
+        run: ctest --test-dir build/host-tests --output-on-failure
 
       - name: Configure Release build
         run: cmake --preset Release

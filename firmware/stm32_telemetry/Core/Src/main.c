@@ -25,6 +25,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include "sensor_conversion.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -128,8 +129,8 @@ int main(void)
         if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
         {
           const uint32_t light_raw = HAL_ADC_GetValue(&hadc1);
-          uint32_t voltage_mv = (temp_raw * 3300U) / 4095U;
-          int32_t temperature_tenths_c = (int32_t)voltage_mv - 500;
+          uint32_t voltage_mv = adc_raw_to_millivolts(temp_raw, 3300U);
+          int32_t temperature_tenths_c = tmp36_millivolts_to_tenths_c(voltage_mv);
           const int message_length = snprintf(adc_message,
                                             sizeof(adc_message),
                                             "ADC raw=%lu, voltage_mv=%lu,  temp_x10_C=%ld, light_raw=%lu\r\n", (unsigned long)temp_raw, (unsigned long)voltage_mv, (long)temperature_tenths_c, (unsigned long)light_raw);
