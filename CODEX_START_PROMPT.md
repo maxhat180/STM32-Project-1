@@ -15,7 +15,7 @@ CubeMX-generated STM32CubeF4 HAL C project under `firmware/stm32_telemetry`, bui
 with CMake, Ninja, and GNU Arm GCC. USART2 uses PA2/PA3 through the onboard ST-LINK
 Virtual COM Port on COM3 at 115200 8-N-1. LD2 is PA5 and B1 is active-low on PC13.
 
-Stages 0 through 5 are complete:
+Stages 0 through 6 are complete:
 
 - LD2 toggles every 250 ms while B1 is released and stays on while B1 is held;
 - UART reports startup, debounced B1 events, and sensor telemetry every two seconds;
@@ -25,9 +25,13 @@ Stages 0 through 5 are complete:
 - warming the TMP36 increased its reported temperature as expected;
 - covering the photoresistor reduced `light_raw` from about 3720 to about 1768,
   and uncovering restored it;
-- the Debug build succeeds without warnings at 14,704 bytes flash and 2,136 bytes
-  RAM;
-- firmware and CI implementation through `1f3ab23` is pushed to `origin/main`.
+- pure ADC/TMP36 conversion logic lives under `App/` with no HAL dependency;
+- native C tests cover ADC boundaries and representative, zero, and below-zero
+  TMP36 cases;
+- GitHub Actions runs host tests before Release firmware packaging;
+- the current Debug build succeeds without warnings at 14,836 bytes flash and
+  2,136 bytes RAM;
+- Stage 6 implementation through `51cb377` is pushed to `origin/main`.
 
 The physical wiring most recently verified is:
 
@@ -46,6 +50,11 @@ usage, build provenance, SHA-256 checksums, and `flash-firmware.ps1`. The first 
 `stm32-telemetry-20260914-101326-utc.zip`, extracted it, and successfully used the
 packaged script to verify and flash the real NUCLEO over ST-LINK/SWD.
 
+Stage 6 added `App/Inc/sensor_conversion.h`,
+`App/Src/sensor_conversion.c`, and a standalone CMake/CTest host project under
+`tests/`. GitHub Actions run `34960752417` successfully ran those tests before
+building, packaging, and uploading the Release firmware artifact.
+
 The required long-term learning path includes deeper bidirectional UART work,
 message framing/parsing and error handling, I2C with a real sensor driver, SPI with
 a real sensor or peripheral driver, and additional sensors. Before using Hetzner,
@@ -62,16 +71,16 @@ may expose UART/SPI and power to a separate locally obtainable radio module. Ver
 current Israeli requirements and viable local/pre-approved parts before selecting
 or directly integrating RF hardware.
 
-Begin Stage 6: separate pure ADC/sensor conversion logic from HAL and peripheral
-code. Briefly explain why pure functions can compile and run as host tests without
-STM32 hardware. Propose a small application-owned C module for ADC-count-to-mV and
-TMP36 temperature conversion, then give me one small coding task and review my work
-before implementing the rest. Add host-side unit tests for boundary and
-representative cases, including raw counts 0 and 4095 and a below-zero TMP36 case.
-Extend GitHub Actions so tests must pass before firmware packaging.
+Continue Stage 7: explicit ADC error handling. The first increment already stores
+and checks the result of `HAL_ADC_Start()`, reports start failure over UART, and
+calls `HAL_ADC_Stop()` exactly once after every successful start. It builds locally
+but has not yet been flashed. First explain poll failure/timeout behavior, then give
+me one small coding task at a time to add distinct rank 1 and rank 2 poll diagnostics
+while preserving the cleanup path. Review my work before building. Then check and
+report the `HAL_ADC_Stop()` result, build Debug and Release, flash the board, and
+verify normal telemetry.
 
-After Stage 6, address explicit ADC start/stop/poll error handling and clean
-structured telemetry. Then cover bidirectional UART and build the laptop
+After Stage 7, define clean structured telemetry. Then cover bidirectional UART and build the laptop
 serial-to-MQTT gateway. Follow with I2C, SPI, and additional sensors before moving
 the telemetry stack to Hetzner. Do not jump directly to DMA, RTOS, hardware-in-the-
 loop infrastructure, RF integration, or Hetzner deployment.

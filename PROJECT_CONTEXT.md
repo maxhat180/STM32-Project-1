@@ -134,7 +134,7 @@ a separately sourced radio module. When RF hardware enters the active milestone,
 verify current Israeli import/regulatory requirements and locally available or
 pre-approved modules before selecting parts or finalizing the layout.
 
-## Current Progress - September 14, 2026
+## Current Progress - September 15, 2026
 
 The first physical firmware milestone is operational:
 
@@ -148,9 +148,18 @@ The first physical firmware milestone is operational:
   ZIPs containing ELF, BIN, HEX, maps, provenance, and checksums;
 - a downloaded CI artifact has been checksum-verified and flashed successfully to
   the physical NUCLEO using the repository's one-command PowerShell helper.
+- ADC-count-to-millivolt and TMP36 conversion logic now lives in an
+  application-owned, HAL-independent C module;
+- native host tests cover ADC boundaries, a representative midpoint, zero and
+  representative TMP36 temperatures, and a below-zero case;
+- GitHub Actions runs those host tests as a required gate before building and
+  packaging Release firmware;
+- Stage 7 has begun by checking `HAL_ADC_Start()`, reporting start failure over
+  UART, and stopping ADC1 exactly once after every successful start.
 
-The next step is separating pure sensor conversion logic from HAL code, adding
-host-side C unit tests, and running those tests in CI.
+The next step is completing Stage 7 by reporting both ADC poll failures and
+checking/reporting `HAL_ADC_Stop()`, while preserving cleanup after a successful
+start. Structured telemetry follows after the ADC error paths are explicit.
 
 ## Learning Strategy
 

@@ -477,3 +477,78 @@ Hetzner deployment.
 `firmware/stm32_telemetry/.gitignore` are unrelated/untracked local content. Do not
 stage, commit, delete, or modify them unless the user explicitly changes this
 instruction.
+
+## Codex Progress Update - September 15, 2026
+
+This is the latest and authoritative continuation point. It supersedes every
+older next-action section above.
+
+### Stage 6 complete: host-tested sensor conversion logic
+
+ADC and TMP36 arithmetic is separated from HAL/peripheral access into the
+application-owned module:
+
+- `firmware/stm32_telemetry/App/Inc/sensor_conversion.h`;
+- `firmware/stm32_telemetry/App/Src/sensor_conversion.c`.
+
+The module exposes pure functions for 12-bit ADC-count-to-millivolt conversion
+and TMP36 millivolt-to-tenths-Celsius conversion. `main.c` still uses HAL to start,
+poll, read, and stop ADC1, but calls this module to interpret the TMP36 reading.
+The module has no HAL or MCU dependency and is compiled both into the Arm firmware
+and a native host test executable.
+
+`firmware/stm32_telemetry/tests/` contains a standalone CMake/CTest host project.
+Six assertions cover ADC counts 0, 2048, and 4095 plus TMP36 results at 0.0 C,
+25.0 C, and -10.0 C. GitHub Actions installs native GCC and configures, builds,
+and runs these tests before the Release firmware build and packaging steps. A test
+failure therefore prevents firmware packaging.
+
+Commit `51cb377` records Stage 6. GitHub Actions run `34960752417` passed the host
+tests, Release firmware build, packaging, and artifact upload.
+
+### Stage 7 started: explicit ADC start handling
+
+The first Stage 7 increment is implemented in the `main.c` `USER CODE` region:
+
+- the result of `HAL_ADC_Start()` is stored as `HAL_StatusTypeDef`;
+- polling and conversion proceed only after `HAL_OK`;
+- a non-OK start emits `ADC error: start failed` over UART;
+- `HAL_ADC_Stop()` executes exactly once after every successful start, including
+  when either poll fails, and is not called after a failed start;
+- the normal two-channel telemetry path is otherwise unchanged.
+
+Host tests still pass. The Debug firmware builds without warnings at 14,836 bytes
+flash and 2,136 bytes RAM. The Release firmware builds without warnings at 9,600
+bytes flash and 2,136 bytes RAM. This Stage 7 increment has not yet been flashed or
+physically exercised on the NUCLEO.
+
+### Exact next learning step
+
+Continue Stage 7. Explain that `HAL_ADC_PollForConversion()` can return timeout or
+error even after ADC start succeeds. Give the user one small coding task at a time
+to add distinct UART diagnostics for the rank 1/TMP36 poll and rank 2/light poll.
+Preserve the single cleanup call after every successful start. Review the user's
+code before building. Then store and check the `HAL_ADC_Stop()` result and report
+stop failure. After all paths compile, build Debug and Release, flash the NUCLEO,
+and verify normal telemetry remains operational. Do not attempt to manufacture a
+hardware ADC failure by unsafe wiring.
+
+After Stage 7, define clean structured telemetry, then proceed to bidirectional
+UART framing/parsing and the laptop serial-to-MQTT gateway. I2C, SPI, additional
+sensors, Hetzner migration, HIL CI, watchdogs/fault handling, Zephyr, secure
+releases, and the custom PCB remain later milestones.
+
+### Current hardware state
+
+The most recently verified hardware state remains the September 14 setup: the
+NUCLEO-F446RE, TMP36 on A0/PA0, photoresistor divider on A1/PA1, LD2, B1, and
+USART2/COM3 were operational. Do not assume COM3 is open or the board remains
+connected; inspect before using it.
+
+### Working-tree caution
+
+`AGENTS.md` contains an unrelated tracked modification. `tmp/`,
+`firmware/stm32_telemetry/.settings/`, and
+`firmware/stm32_telemetry/.gitignore` are unrelated/untracked local content. Do not
+stage, commit, delete, or modify them unless the user explicitly changes this
+instruction.

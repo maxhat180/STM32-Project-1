@@ -122,26 +122,34 @@ int main(void)
     const uint32_t now_ms = HAL_GetTick();
     if ((now_ms - last_uart_heartbeat_ms) >= UART_HEARTBEAT_INTERVAL_MS)
     {
-      (void)HAL_ADC_Start(&hadc1);
-      if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
+      const HAL_StatusTypeDef adc_start_status = HAL_ADC_Start(&hadc1);
+      if (adc_start_status == HAL_OK)
       {
-        const uint32_t temp_raw = HAL_ADC_GetValue(&hadc1);
         if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
         {
-          const uint32_t light_raw = HAL_ADC_GetValue(&hadc1);
-          uint32_t voltage_mv = adc_raw_to_millivolts(temp_raw, 3300U);
-          int32_t temperature_tenths_c = tmp36_millivolts_to_tenths_c(voltage_mv);
-          const int message_length = snprintf(adc_message,
-                                            sizeof(adc_message),
-                                            "ADC raw=%lu, voltage_mv=%lu,  temp_x10_C=%ld, light_raw=%lu\r\n", (unsigned long)temp_raw, (unsigned long)voltage_mv, (long)temperature_tenths_c, (unsigned long)light_raw);
-          if ((message_length > 0) &&
-            (message_length < (int)sizeof(adc_message)))
+          const uint32_t temp_raw = HAL_ADC_GetValue(&hadc1);
+          if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
           {
-            UART_Write(adc_message, (uint16_t)message_length);
+            const uint32_t light_raw = HAL_ADC_GetValue(&hadc1);
+            uint32_t voltage_mv = adc_raw_to_millivolts(temp_raw, 3300U);
+            int32_t temperature_tenths_c = tmp36_millivolts_to_tenths_c(voltage_mv);
+            const int message_length = snprintf(adc_message,
+                                              sizeof(adc_message),
+                                              "ADC raw=%lu, voltage_mv=%lu,  temp_x10_C=%ld, light_raw=%lu\r\n", (unsigned long)temp_raw, (unsigned long)voltage_mv, (long)temperature_tenths_c, (unsigned long)light_raw);
+            if ((message_length > 0) &&
+              (message_length < (int)sizeof(adc_message)))
+            {
+              UART_Write(adc_message, (uint16_t)message_length);
+            }
           }
         }
+        (void)HAL_ADC_Stop(&hadc1);
       }
-      (void)HAL_ADC_Stop(&hadc1);
+      else
+      {
+        static const char adc_start_error_message[] = "ADC error: start failed\r\n";
+        UART_Write(adc_start_error_message, (uint16_t)(sizeof(adc_start_error_message) - 1U));
+      }
       last_uart_heartbeat_ms = now_ms;
     }
     const GPIO_PinState button_state = HAL_GPIO_ReadPin(B1_USER_GPIO_Port,
