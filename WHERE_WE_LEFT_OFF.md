@@ -552,3 +552,63 @@ connected; inspect before using it.
 `firmware/stm32_telemetry/.gitignore` are unrelated/untracked local content. Do not
 stage, commit, delete, or modify them unless the user explicitly changes this
 instruction.
+
+## Codex Progress Update - September 17, 2026
+
+This is the latest and authoritative continuation point. It supersedes every
+older next-action section above.
+
+### Stage 7 complete: ADC lifecycle diagnostics
+
+The two-rank ADC acquisition path now checks and reports each HAL operation:
+
+- ADC start failure;
+- temperature/rank-1 poll failure;
+- light/rank-2 poll failure;
+- ADC stop failure.
+
+Each poll result is stored as `HAL_StatusTypeDef`. ADC values are read only after
+their corresponding polls succeed. `HAL_ADC_Stop()` executes exactly once after
+every successful start, including either poll-failure path, and is not called after
+a failed start. Successful acquisition still emits one combined temperature/light
+telemetry line.
+
+Native sensor-conversion tests pass. Debug and Release firmware builds complete
+without warnings. Debug uses 15,008 bytes of flash and 2,136 bytes of RAM; Release
+uses 9,724 bytes of flash and 2,136 bytes of RAM.
+
+The Debug ELF was flashed over ST-LINK/SWD and normal operation was physically
+verified: TMP36 and light readings arrived approximately every two seconds, and B1
+press/release events remained functional. A temporary loss of terminal display was
+isolated to the host COM3 session because LD2 continued blinking and closing and
+reopening COM3 restored output without a firmware change.
+
+Do not deliberately manufacture ADC failures using unsafe wiring. Error-path
+unitability should be improved later by separating acquisition control from direct
+HAL calls.
+
+### Exact next learning stage
+
+Begin Stage 8 by defining versioned, newline-delimited JSON telemetry. Preserve
+integer temperature representation, bounded `snprintf()`, and one record per sensor
+sample. Include at least record type, schema version, uptime, temperature raw count,
+nominal-reference millivolts, temperature in tenths Celsius, and light raw count.
+
+After the telemetry record is implemented, built, flashed, and visually verified,
+add host-side schema/parsing tests. Then proceed to framed UART receive commands,
+malformed-input recovery, and the laptop serial-to-MQTT gateway.
+
+### Stage 8 firmware increment verified
+
+The successful sensor record is now emitted as newline-delimited JSON with schema
+version 1, MCU uptime, raw temperature ADC count, nominal-reference millivolts,
+temperature in tenths Celsius, and raw light ADC count. The schema constant is used
+by the serializer, the output buffer has been checked against the maximum formatted
+length, and the existing bounded `snprintf()` check remains in place.
+
+Native tests and both firmware builds pass without warnings. With JSON telemetry,
+Debug uses 15,096 bytes of flash and 2,136 bytes of RAM; Release uses 9,780 bytes
+of flash and 2,136 bytes of RAM. The Debug firmware was flashed and the user
+physically verified valid JSON telemetry on COM3. The next increment is a host-side
+parser and tests that accept schema-1 telemetry while rejecting malformed JSON,
+missing fields, wrong types, and unsupported schemas.

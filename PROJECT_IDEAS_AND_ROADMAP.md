@@ -6,7 +6,7 @@ The intention is NOT to create six unrelated repositories.
 
 Treat them as phases of one evolving embedded DevOps platform.
 
-## Progress Snapshot - September 15, 2026
+## Progress Snapshot - September 17, 2026
 
 - Phase 1 is partially complete: GPIO, UART, TMP36 temperature, and photoresistor
   light telemetry are working on the physical NUCLEO-F446RE.
@@ -15,14 +15,18 @@ Treat them as phases of one evolving embedded DevOps platform.
   The one-command Windows flashing path has been tested on the real board.
 - Host-side C unit tests now cover the pure ADC/TMP36 conversion module and run as
   a required GitHub Actions gate before firmware packaging.
+- ADC start, rank-specific poll, and stop failures now have distinct diagnostics
+  with cleanup preserved after every successful start.
+- Sensor samples are emitted as versioned, newline-delimited JSON and have been
+  physically verified on COM3 after flashing the Debug firmware.
 - Static analysis, explicit size gates, tagged releases, and signing remain future
   Phase 2 increments.
 - Hardware-in-the-loop CI, gateway, server, observability, and advanced firmware
   phases have not started.
 
-The immediate next increment is completing explicit ADC start, poll, and stop
-error handling. Start failure is now detected and reported; rank-specific poll
-diagnostics and stop-result handling remain.
+The immediate next increment is a host-side schema-1 telemetry parser with tests
+for valid input, malformed JSON, missing fields, wrong types, and unsupported
+schema versions. This becomes the validated boundary used by the Python gateway.
 
 The longer path must also include deeper UART work, I2C and SPI sensor drivers,
 additional physical sensors, a laptop-hosted MQTT gateway/broker milestone, and an
@@ -408,6 +412,7 @@ GitHub Actions build and flashable timestamped artifacts (baseline complete)
 
 ## Milestone 3
 Pure firmware modules, host unit tests, ADC hardening, and structured telemetry
+(firmware side complete; host schema validation next)
 
 ## Milestone 4
 Bidirectional UART plus Python gateway and Mosquitto MQTT on the laptop

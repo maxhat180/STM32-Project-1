@@ -37,6 +37,7 @@
 /* USER CODE BEGIN PD */
 #define LED_TOGGLE_INTERVAL_MS 250U
 #define UART_HEARTBEAT_INTERVAL_MS 2000U
+#define TELEMETRY_SCHEMA_VERSION 1U
 
 /* USER CODE END PD */
 
@@ -107,7 +108,7 @@ int main(void)
   GPIO_PinState previous_button_state = HAL_GPIO_ReadPin(B1_USER_GPIO_Port,
                                                           B1_USER_Pin);
   uint32_t last_led_toggle_ms = HAL_GetTick();
-  char adc_message[96];
+  char adc_message[192];
   UART_Write(startup_message, (uint16_t)(sizeof(startup_message) - 1U));
 
   /* USER CODE END 2 */
@@ -125,25 +126,63 @@ int main(void)
       const HAL_StatusTypeDef adc_start_status = HAL_ADC_Start(&hadc1);
       if (adc_start_status == HAL_OK)
       {
-        if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
+        const HAL_StatusTypeDef adc_temp_poll_status =
+            HAL_ADC_PollForConversion(&hadc1, 100U);
+        if (adc_temp_poll_status == HAL_OK)
         {
           const uint32_t temp_raw = HAL_ADC_GetValue(&hadc1);
-          if (HAL_ADC_PollForConversion(&hadc1, 100U) == HAL_OK)
+          const HAL_StatusTypeDef adc_light_poll_status =
+              HAL_ADC_PollForConversion(&hadc1, 100U);
+          if (adc_light_poll_status == HAL_OK)
           {
             const uint32_t light_raw = HAL_ADC_GetValue(&hadc1);
-            uint32_t voltage_mv = adc_raw_to_millivolts(temp_raw, 3300U);
-            int32_t temperature_tenths_c = tmp36_millivolts_to_tenths_c(voltage_mv);
-            const int message_length = snprintf(adc_message,
-                                              sizeof(adc_message),
-                                              "ADC raw=%lu, voltage_mv=%lu,  temp_x10_C=%ld, light_raw=%lu\r\n", (unsigned long)temp_raw, (unsigned long)voltage_mv, (long)temperature_tenths_c, (unsigned long)light_raw);
+            const uint32_t voltage_mv =
+                adc_raw_to_millivolts(temp_raw, 3300U);
+            const int32_t temperature_tenths_c =
+                tmp36_millivolts_to_tenths_c(voltage_mv);
+            const int message_length = snprintf(
+              adc_message,
+              sizeof(adc_message),
+              "{\"type\":\"telemetry\",\"schema\":%lu,"
+              "\"uptime_ms\":%lu,\"temp_raw\":%lu,"
+              "\"temp_mv\":%lu,\"temp_x10_c\":%ld,"
+              "\"light_raw\":%lu}\r\n",
+              (unsigned long)TELEMETRY_SCHEMA_VERSION,
+              (unsigned long)now_ms,
+              (unsigned long)temp_raw,
+              (unsigned long)voltage_mv,
+              (long)temperature_tenths_c,
+              (unsigned long)light_raw);
             if ((message_length > 0) &&
-              (message_length < (int)sizeof(adc_message)))
+                (message_length < (int)sizeof(adc_message)))
             {
               UART_Write(adc_message, (uint16_t)message_length);
             }
           }
+          else
+          {
+            static const char adc_light_poll_error_message[] =
+                "ADC error: light poll failed\r\n";
+            UART_Write(adc_light_poll_error_message,
+                       (uint16_t)(sizeof(adc_light_poll_error_message) - 1U));
+          }
         }
-        (void)HAL_ADC_Stop(&hadc1);
+        else
+        {
+          static const char adc_temp_poll_error_message[] =
+              "ADC error: temperature poll failed\r\n";
+          UART_Write(adc_temp_poll_error_message,
+                     (uint16_t)(sizeof(adc_temp_poll_error_message) - 1U));
+        }
+
+        const HAL_StatusTypeDef adc_stop_status = HAL_ADC_Stop(&hadc1);
+        if (adc_stop_status != HAL_OK)
+        {
+          static const char adc_stop_error_message[] =
+              "ADC error: stop failed\r\n";
+          UART_Write(adc_stop_error_message,
+                     (uint16_t)(sizeof(adc_stop_error_message) - 1U));
+        }
       }
       else
       {
@@ -152,6 +191,7 @@ int main(void)
       }
       last_uart_heartbeat_ms = now_ms;
     }
+
     const GPIO_PinState button_state = HAL_GPIO_ReadPin(B1_USER_GPIO_Port,
                                                         B1_USER_Pin);
 

@@ -134,7 +134,7 @@ a separately sourced radio module. When RF hardware enters the active milestone,
 verify current Israeli import/regulatory requirements and locally available or
 pre-approved modules before selecting parts or finalizing the layout.
 
-## Current Progress - September 15, 2026
+## Current Progress - September 17, 2026
 
 The first physical firmware milestone is operational:
 
@@ -154,12 +154,17 @@ The first physical firmware milestone is operational:
   representative TMP36 temperatures, and a below-zero case;
 - GitHub Actions runs those host tests as a required gate before building and
   packaging Release firmware;
-- Stage 7 has begun by checking `HAL_ADC_Start()`, reporting start failure over
-  UART, and stopping ADC1 exactly once after every successful start.
+- ADC start, rank-specific poll, and stop results are checked and reported while
+  preserving exactly one stop call after every successful start;
+- successful sensor samples are emitted as versioned, newline-delimited JSON with
+  uptime, raw ADC values, nominal-reference millivolts, and integer temperature;
+- the Debug firmware containing the ADC diagnostics and JSON telemetry has been
+  flashed and physically verified on the NUCLEO through COM3.
 
-The next step is completing Stage 7 by reporting both ADC poll failures and
-checking/reporting `HAL_ADC_Stop()`, while preserving cleanup after a successful
-start. Structured telemetry follows after the ADC error paths are explicit.
+The next step is adding a host-side telemetry parser and tests that accept the
+schema-1 record while rejecting malformed JSON, missing fields, wrong types, and
+unsupported schema versions. Bidirectional UART commands and the local
+serial-to-MQTT gateway follow that validation boundary.
 
 ## Learning Strategy
 

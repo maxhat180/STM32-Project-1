@@ -10,6 +10,11 @@ Start here:
 4. `HARDWARE_INVENTORY.md`
 5. `PROJECT_IDEAS_AND_ROADMAP.md`
 
+Career and customer-facing project evidence is tracked in:
+
+- `CAREER_READINESS.md`
+- `CUSTOMER_SOLUTION_BRIEF.md`
+
 Then use the prompt in:
 
 - `CODEX_START_PROMPT.md`
