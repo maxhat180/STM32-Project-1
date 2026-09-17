@@ -29,10 +29,10 @@ present." It is:
 | GPIO and board bring-up | First-line FAE work often begins with power, reset, pins, and observable signals | LD2, active-low B1, debounce, ST-LINK flashing, UART smoke test | Proven | Produce a repeatable bring-up checklist with expected measurements and failure hypotheses |
 | Analog acquisition | Connects real sensors to an MCU and exposes reference, range, and noise tradeoffs | Two-channel ADC with TMP36 and photoresistor; physical stimulus tests | Proven at a basic level | Quantify accuracy, reference-voltage error, sampling tradeoffs, and filtering |
 | Robust peripheral handling | Customer prototypes must fail diagnosably rather than silently | ADC start, rank-specific poll, and stop diagnostics preserve cleanup; clean builds and normal hardware operation verified | Proven at a basic level | Separate acquisition control from HAL calls so error paths can be injected and unit-tested safely |
-| UART protocol design | Enables configuration, diagnostics, gateways, and manufacturing fixtures | Versioned newline-delimited JSON telemetry plus button and diagnostic output | In progress | Validate schema 1 on the host, then add framed receive commands, timeouts, malformed-input recovery, and tests |
+| UART protocol design | Enables configuration, diagnostics, gateways, and manufacturing fixtures | Versioned newline-delimited JSON telemetry plus strict host validation and classified non-JSON lines | In progress | Add framed receive commands, timeouts, malformed-input recovery, and tests |
 | I2C | Common sensor/configuration bus and frequent customer-debugging topic | No implemented driver | Planned | Bring up LIS3DH over I2C; explain addressing, register access, pull-ups, ACK/NACK, and bus diagnosis |
 | SPI | Common high-throughput peripheral bus with board-level timing concerns | No implemented driver | Planned | Drive a real peripheral over SPI; verify chip select, CPOL/CPHA, transactions, and failure diagnosis |
-| Firmware architecture and testability | Demonstrates maintainable application/peripheral boundaries | HAL-independent sensor conversion module with host tests and a versioned telemetry contract | Proven at a basic level | Add host schema tests, then separate acquisition, domain data, serialization, and transport interfaces |
+| Firmware architecture and testability | Demonstrates maintainable application/peripheral boundaries | HAL-independent sensor conversion module, native C tests, immutable host telemetry records, strict schema tests, and a versioned contract | Proven at a basic level | Separate acquisition, domain data, serialization, and transport interfaces further |
 | Debugging method | Core FAE differentiator during customer escalations | Physical stimulus checks, serial observations, build/flash verification | In progress | Record expectation, observation, hypotheses, isolation experiment, root cause, and fix for real faults |
 | Build and release engineering | Makes examples and customer deliverables reproducible | GitHub Actions cross-build, tests, checksums, packaged artifacts, verified flashing | Proven | Add static analysis, size limits, tagged releases, provenance/SBOM, and signing |
 | IoT and gateway integration | Connects the embedded design to business-visible data | Architecture documented only | Planned | Build serial-to-MQTT gateway, local broker, schema, reconnect behavior, timestamps, and observability |
@@ -85,9 +85,9 @@ These artifacts provide interview evidence that the user can do more than build 
 prototype: they can guide a customer from requirements through a defensible
 technical solution.
 
-## Immediate Technical Gate: Host Telemetry Validation
+## Completed Technical Gate: Host Telemetry Validation
 
-The next increment is complete only when a host-side parser:
+The dependency-free Python host parser now:
 
 - accepts a representative schema-1 telemetry record;
 - rejects malformed JSON;
@@ -95,6 +95,11 @@ The next increment is complete only when a host-side parser:
 - rejects an unsupported schema version;
 - rejects incorrect field types, including JSON booleans where integers are
   required;
-- preserves the raw MCU uptime and sensor values without silently coercing them.
+- preserves the raw MCU uptime and sensor values without silently coercing them;
+- classifies and rejects existing startup, B1, ADC-diagnostic, empty, and unknown
+  non-JSON UART lines.
 
-The validated parser will become the input boundary for the serial-to-MQTT gateway.
+Nine unit tests enforce this boundary locally and in GitHub Actions. The next
+technical gate is framed bidirectional UART commands with malformed-input recovery.
+The validated parser will then become the input boundary for the serial-to-MQTT
+gateway.

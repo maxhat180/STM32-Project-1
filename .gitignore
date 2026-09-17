@@ -15,6 +15,11 @@ compile_commands.json
 *.a
 *.su
 
+# Python bytecode and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
 # IDE and editor state
 .vscode/
 .idea/

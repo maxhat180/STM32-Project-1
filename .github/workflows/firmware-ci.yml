@@ -33,6 +33,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Run gateway telemetry parser tests
+        working-directory: ${{ github.workspace }}
+        run: python3 -m unittest discover -s gateway/tests -p "test_*.py" -v
+
       - name: Install ARM build tools
         run: |
           set -euo pipefail

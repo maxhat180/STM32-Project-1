@@ -159,12 +159,17 @@ The first physical firmware milestone is operational:
 - successful sensor samples are emitted as versioned, newline-delimited JSON with
   uptime, raw ADC values, nominal-reference millivolts, and integer temperature;
 - the Debug firmware containing the ADC diagnostics and JSON telemetry has been
-  flashed and physically verified on the NUCLEO through COM3.
+  flashed and physically verified on the NUCLEO through COM3;
+- a dependency-free Python host parser validates schema-1 telemetry, preserves
+  integer values without coercion, and rejects malformed JSON, missing fields,
+  wrong types (including booleans), and unsupported schema versions;
+- non-JSON startup, B1, ADC-diagnostic, empty, and unknown text lines are
+  deliberately classified and rejected at the host boundary;
+- nine Python unit tests cover that boundary and run in GitHub Actions before the
+  firmware build.
 
-The next step is adding a host-side telemetry parser and tests that accept the
-schema-1 record while rejecting malformed JSON, missing fields, wrong types, and
-unsupported schema versions. Bidirectional UART commands and the local
-serial-to-MQTT gateway follow that validation boundary.
+The next step is framed bidirectional UART commands with malformed-input recovery.
+The laptop serial-to-MQTT gateway follows after that protocol is proven.
 
 ## Learning Strategy
 

@@ -612,3 +612,42 @@ of flash and 2,136 bytes of RAM. The Debug firmware was flashed and the user
 physically verified valid JSON telemetry on COM3. The next increment is a host-side
 parser and tests that accept schema-1 telemetry while rejecting malformed JSON,
 missing fields, wrong types, and unsupported schemas.
+
+## Codex Progress Update - September 17, 2026: Host validation complete
+
+The host telemetry validation increment is complete. The new dependency-free
+Python gateway parser lives under `gateway/` and returns an immutable, typed
+schema-1 record. It performs exact type checks, including rejecting JSON booleans
+where integers are required, and does not silently coerce MCU uptime or sensor
+values.
+
+Nine standard-library `unittest` tests cover:
+
+- a representative valid schema-1 record;
+- malformed JSON;
+- missing required fields;
+- unsupported schema versions;
+- incorrect field types and boolean-as-integer cases;
+- preservation of large, zero, and signed integer values;
+- non-object JSON;
+- explicit rejection and classification of startup, B1, ADC-diagnostic, empty,
+  and unknown text lines sharing the UART stream.
+
+GitHub Actions runs the Python parser tests before installing the ARM tools and
+before building or packaging firmware. The existing native C tests and firmware
+build pipeline remain intact.
+
+### Exact next learning stage
+
+Design and implement a small framed bidirectional UART command protocol. Add one
+command at a time, starting with a host-testable frame/parser contract, then cover
+timeouts, overflow, and recovery when malformed input is followed by a valid
+command. Do not begin the serial-to-MQTT gateway until malformed command recovery
+works. Do not require COM3 or connected hardware for the initial protocol tests.
+
+### Working-tree caution
+
+`AGENTS.md` contains an unrelated tracked modification. `tmp/`,
+`firmware/stm32_telemetry/.settings/`, and
+`firmware/stm32_telemetry/.gitignore` remain unrelated local content and must not
+be staged, modified, deleted, or committed without explicit instruction.

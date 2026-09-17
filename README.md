@@ -44,6 +44,21 @@ EmbeddedDevOps/
 
 Do not create empty complexity prematurely. Add folders when the relevant implementation begins.
 
+## Gateway telemetry validation
+
+The host-side gateway begins with a dependency-free Python validation boundary for
+the mixed UART stream. It accepts schema-1 JSON telemetry, preserves the MCU's
+integer values without coercion, rejects malformed or incompatible records, and
+classifies the firmware's startup, button, and ADC diagnostic text.
+
+Run its tests from the repository root:
+
+```powershell
+py -m unittest discover -s gateway/tests -p "test_*.py" -v
+```
+
+GitHub Actions runs these tests before building and packaging firmware.
+
 ## Firmware CI artifacts
 
 GitHub Actions builds the Release firmware for every push to `main`, every pull
