@@ -651,3 +651,46 @@ works. Do not require COM3 or connected hardware for the initial protocol tests.
 `firmware/stm32_telemetry/.settings/`, and
 `firmware/stm32_telemetry/.gitignore` remain unrelated local content and must not
 be staged, modified, deleted, or committed without explicit instruction.
+
+## Codex Progress Update - October 11, 2026
+
+The first host-testable inbound command increment is complete and pushed as
+commit `86a1542`. The HAL-independent C parser accepts the exact uppercase
+`STATUS` frame and rejects null, empty, lowercase, truncated, and newline-bearing
+inputs. Native parser tests run through the existing CMake/CTest project, and the
+parser also compiles for the Arm firmware target. Debug and Release firmware
+builds succeeded, the Debug image was flashed, and reconstructed TMP36 and
+photoresistor wiring produced stable, plausible JSON telemetry with normal light
+response.
+
+Work has started on a separate HAL-independent byte-stream framer. Its header,
+initializer, implementation, and native test are present locally but are not yet
+connected to the firmware target or UART. The implemented and tested behavior is:
+
+- initialization resets length and discard state without clearing the buffer;
+- ordinary bytes append to the frame and return `COMMAND_FRAME_IN_PROGRESS`;
+- carriage return is ignored for CRLF compatibility;
+- newline returns `COMMAND_FRAME_READY` without entering the delimiter into the
+  payload.
+
+The framer is deliberately incomplete and must not be integrated into UART yet.
+It does not protect the 32-byte buffer from overflow, implement discard-until-
+newline recovery, handle partial-frame timeouts, or connect completed frames to
+`command_parse()`.
+
+### Exact next learning step
+
+Add a native test that fills all `COMMAND_FRAME_CAPACITY` bytes, then pushes one
+additional byte and expects `COMMAND_FRAME_OVERFLOW`, unchanged length, and
+`discarding == true`. Review the test before changing the implementation. Then
+add the bounds check before the buffer write, test discard-until-newline recovery,
+and prove that a valid `STATUS` command works immediately after an oversized
+frame. Only after those host tests pass should the framer be added to the firmware
+target and UART reception begin.
+
+### Working-tree caution
+
+`AGENTS.md`, `docs/`, `research/`, `tmp/`,
+`firmware/stm32_telemetry/.settings/`, and
+`firmware/stm32_telemetry/.gitignore` are unrelated local content and must not be
+staged, modified, deleted, or committed without explicit instruction.

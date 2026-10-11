@@ -14,11 +14,20 @@ add_executable(command_parser_tests
     ../App/Src/command_parser.c
 )
 
+add_executable(command_framer_tests
+    test_command_framer.c
+    ../App/Src/command_framer.c
+)
+
 target_include_directories(sensor_conversion_tests PRIVATE
     ../App/Inc
 )
 
 target_include_directories(command_parser_tests PRIVATE
+    ../App/Inc
+)
+
+target_include_directories(command_framer_tests PRIVATE
     ../App/Inc
 )
 
@@ -30,4 +39,9 @@ add_test(
 add_test(
     NAME command_parser_tests
     COMMAND command_parser_tests
+)
+
+add_test(
+    NAME command_framer_tests
+    COMMAND command_framer_tests
 )
