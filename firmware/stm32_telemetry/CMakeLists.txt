@@ -47,6 +47,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/sensor_conversion.c
     App/Src/command_parser.c
+    App/Src/command_framer.c
 )
 
 # Add include paths

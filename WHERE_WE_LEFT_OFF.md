@@ -694,3 +694,98 @@ target and UART reception begin.
 `firmware/stm32_telemetry/.settings/`, and
 `firmware/stm32_telemetry/.gitignore` are unrelated local content and must not be
 staged, modified, deleted, or committed without explicit instruction.
+
+## Codex Progress Update - October 12, 2026
+
+This is the latest and authoritative continuation point. It supersedes older
+next-action sections. The session began at `30f54da` (Start host-tested UART
+command framing), with local main and origin/main synchronized.
+
+### Command framing: overflow protection and recovery
+
+The user added a native test that initializes a frame, pushes exactly
+COMMAND_FRAME_CAPACITY ordinary bytes, checks each result, stored byte, and
+length increment, then pushes an extra byte and checks COMMAND_FRAME_OVERFLOW,
+unchanged length, and discarding == true. The test was reviewed before the
+implementation was changed.
+
+command_frame_push() now checks capacity before writing to the buffer. The
+first excess ordinary byte sets discarding and returns COMMAND_FRAME_OVERFLOW.
+While discarding, bytes are ignored and return COMMAND_FRAME_IN_PROGRESS;
+newline resets length and discard state, also returning IN_PROGRESS. A normal
+newline still returns COMMAND_FRAME_READY while preserving the payload and
+length. CR remains ignored. The assistant made the final small return-placement
+correction at the user's explicit request.
+
+The user explicitly chose to skip additional recovery tests. Recovery behavior
+has been reviewed, but discard-until-newline and STATUS immediately after an
+oversized frame have NOT been verified by automated tests or physical UART tests.
+Do not claim that the existing tests prove recovery. Partial-frame timeouts,
+UART reception, frame-to-parser dispatch, and command responses remain unimplemented.
+
+The user added App/Src/command_framer.c to the STM32 target_sources list. Both
+Debug and Release builds passed, as reported by the user. The framer is compiled
+for STM32 but is not connected to UART or used by main.c yet.
+
+### Validation and execution preference
+
+All three native CTest executables passed after the bounds check (assistant-run).
+After the final recovery correction, the user ran the existing native tests and
+reported that they passed. The user subsequently ran both firmware builds and
+reported that both passed. No firmware was flashed in this session.
+
+From now on, leave ALL test execution, firmware builds, and flashing to the user.
+Review code first, then give the exact PowerShell commands and let the user report
+results. Do not silently run these actions or fix learning code. Keep the user as
+the primary developer, with one small C task at a time and a basic mental model
+before implementation. Provide full implementations only when explicitly asked.
+
+### Exact next learning task (assigned, not yet implemented)
+
+In firmware/stm32_telemetry/Core/Src/main.c:
+
+1. Add #include "command_framer.h" in USER CODE BEGIN Includes.
+2. Declare CommandFrame command_frame in USER CODE BEGIN 2, before while (1).
+3. Call command_frame_init(&command_frame) there once.
+
+These changes are not present at session end. Explain that this persistent frame
+must survive loop iterations; resetting it each iteration would erase partial
+commands. Review the user's setup, then continue UART reception in small steps.
+Inspect the existing loop before choosing a receive approach: it contains blocking
+UART transmission, ADC polls, and button-debounce delay, so consider receive data
+loss and overrun when designing reception. Do not introduce a full implementation.
+A READY payload is parsed with command_parse(frame.buffer, frame.length), then
+reset by the caller; the buffer is not a null-terminated C string.
+
+### PowerShell commands
+
+From the repository root, native tests:
+
+```powershell
+cmake -S firmware/stm32_telemetry/tests -B firmware/stm32_telemetry/build/host-tests -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build firmware/stm32_telemetry/build/host-tests
+ctest --test-dir firmware/stm32_telemetry/build/host-tests --output-on-failure
+```
+
+Firmware builds:
+
+```powershell
+Push-Location firmware/stm32_telemetry
+cmake --preset Debug
+cmake --build --preset Debug
+cmake --preset Release
+cmake --build --preset Release
+Pop-Location
+```
+
+### Hardware and working-tree caution
+
+The user is packing up the circuit and materials. Do not assume the board is
+connected, COM3 available, or the previous wiring intact. The last physical
+verification remains October 11: TMP36 on A0/PA0 and the photoresistor divider on
+A1/PA1 produced normal JSON telemetry and light response. Recheck physical setup
+before future flashing or UART validation.
+
+Preserve and never stage, modify, delete, or commit unrelated AGENTS.md, docs/,
+research/, tmp/, firmware/stm32_telemetry/.settings/, and
+firmware/stm32_telemetry/.gitignore. Never use git add .

@@ -33,5 +33,19 @@ int main(void)
     const CommandFrameResult newline_return_result = command_frame_push(&frame, '\n');
     assert(newline_return_result == COMMAND_FRAME_READY);
     assert(frame.length == 1U);
+
+    command_frame_init(&frame);
+    size_t i;
+    for (i = 0; i < COMMAND_FRAME_CAPACITY; ++i) {
+        const CommandFrameResult result = command_frame_push(&frame, 'A');
+        assert(result == COMMAND_FRAME_IN_PROGRESS);
+        assert(frame.buffer[i] == 'A');
+        assert(frame.length == i + 1U);
+    }
+    assert(frame.length == COMMAND_FRAME_CAPACITY);
+    const CommandFrameResult overflow_result = command_frame_push(&frame, 'B');
+    assert(overflow_result == COMMAND_FRAME_OVERFLOW);
+    assert(frame.length == COMMAND_FRAME_CAPACITY);
+    assert(frame.discarding == true);
     return 0;
 }
