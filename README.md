@@ -1,48 +1,60 @@
-# Embedded DevOps Codex Handoff
+# STM32 Environmental Monitor
 
-This folder is the handoff from a ChatGPT planning conversation into Codex.
-
-Start here:
-
-1. `AGENTS.md`
-2. `PROJECT_CONTEXT.md`
-3. `WHERE_WE_LEFT_OFF.md`
-4. `HARDWARE_INVENTORY.md`
-5. `PROJECT_IDEAS_AND_ROADMAP.md`
-
-Career and customer-facing project evidence is tracked in:
-
-- `CAREER_READINESS.md`
-- `CUSTOMER_SOLUTION_BRIEF.md`
-
-Then use the prompt in:
-
-- `CODEX_START_PROMPT.md`
-
-## Intended Repository Shape
-
-As implementation begins, evolve toward:
+An STM32 sensor node with embedded C firmware, host-side telemetry validation,
+and automated firmware builds and deployment artifacts. The current hardware
+uses a NUCLEO-F446RE, a TMP36 temperature sensor, and a photoresistor divider.
 
 ```text
-EmbeddedDevOps/
-|
-+-- AGENTS.md
-+-- PROJECT_CONTEXT.md
-+-- HARDWARE_INVENTORY.md
-+-- WHERE_WE_LEFT_OFF.md
-+-- PROJECT_IDEAS_AND_ROADMAP.md
-+-- README.md
-|
-+-- firmware/
-+-- gateway/
-+-- server/
-+-- infra/
-+-- scripts/
-+-- tests/
-+-- docs/
+TMP36 + photoresistor -> STM32 ADC -> JSON over USART2 / ST-LINK USB -> host
 ```
 
-Do not create empty complexity prematurely. Add folders when the relevant implementation begins.
+## Implemented capabilities
+
+- LD2 status indication and debounced B1 input events.
+- Two-channel ADC acquisition with explicit start, poll, and stop diagnostics.
+- Integer temperature conversion and versioned newline-delimited JSON telemetry.
+- HAL-independent sensor conversion, command parsing, and command framing modules
+  with native C tests.
+- A Python schema-validation boundary with tests for malformed and incompatible
+  telemetry.
+- GitHub Actions validation and Release cross-compilation, with checksummed
+  ELF/BIN/HEX deployment packages and an ST-LINK flashing helper.
+- Initial interrupt-driven UART reception that counts incoming bytes and rearms
+  reception after each byte; Debug and Release builds pass. This receive path has
+  not yet been tested on hardware.
+
+Sensor telemetry and programming a CI-built artifact have been physically
+verified. Bidirectional command handling is incomplete: reception does not yet
+buffer bytes or dispatch frames to the parser, and UART-error recovery and
+partial-frame timeouts remain outstanding. Framer overflow rejection is covered
+by native tests; discard-until-newline recovery is implemented but has no
+dedicated recovery test.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `firmware/stm32_telemetry/` | CubeMX configuration, HAL firmware, application modules, and native C tests |
+| `gateway/` | Python telemetry parser and unit tests |
+| `.github/workflows/` | Firmware validation, build, and artifact packaging |
+| `tools/` | Windows firmware flashing helper |
+| `HARDWARE_INVENTORY.md` | Development hardware and sensor inventory |
+| `CUSTOMER_SOLUTION_BRIEF.md` | Proposed use case, requirements, and engineering constraints |
+
+See [firmware/README.md](firmware/README.md) for build commands and validation
+status.
+
+## Planned extensions
+
+- A NUCLEO-connected temperature/light sensor PCB, followed by a standalone MCU
+  board with power, programming, and test access.
+- Buffered UART commands with error recovery and timeouts.
+- A local serial-to-MQTT gateway and broker, followed by server-side storage and
+  dashboards.
+- Digital sensor interfaces, static analysis, hardware-in-the-loop testing, and
+  release integrity checks.
+
+These extensions are planned; they are not implemented capabilities.
 
 ## Gateway telemetry validation
 

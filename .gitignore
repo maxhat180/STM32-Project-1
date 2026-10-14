@@ -42,3 +42,11 @@ WhatsApp Image*.jpg
 !.env.example
 *.pem
 *.key
+
+# Local mentoring, session handoffs, and personal planning (keep off GitHub).
+/.local/
+WHERE_WE_LEFT_OFF.md
+/CODEX_START_PROMPT.md
+/PROJECT_CONTEXT.md
+/PROJECT_IDEAS_AND_ROADMAP.md
+/CAREER_READINESS.md

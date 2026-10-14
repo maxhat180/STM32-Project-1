@@ -26,6 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include "sensor_conversion.h"
+#include "command_framer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,7 +50,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+static volatile uint32_t uart_rx_count = 0U;
+static uint8_t uart_rx_byte = 0U;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -100,6 +102,15 @@ int main(void)
   MX_ADC1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  CommandFrame command_frame;
+  command_frame_init(&command_frame);
+  const HAL_StatusTypeDef rx_status = HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1U);
+
+  if (rx_status != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   uint32_t last_uart_heartbeat_ms = HAL_GetTick();
   static const char startup_message[] =
@@ -271,7 +282,21 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart == &huart2)
+  {
+    uart_rx_count++;
 
+    const HAL_StatusTypeDef rx_status =
+        HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1U);
+
+    if (rx_status != HAL_OK)
+    {
+      Error_Handler();
+    }
+  }
+}
 /* USER CODE END 4 */
 
 /**
