@@ -35,7 +35,8 @@ dedicated recovery test.
 | Path | Purpose |
 |---|---|
 | `firmware/stm32_telemetry/` | CubeMX configuration, HAL firmware, application modules, and native C tests |
-| `gateway/` | Python telemetry parser and unit tests |
+| `firmware/nano_ble/` | EverCold Arduino Nano 33 BLE Sense Rev2 analog/BLE prototype and manual setup |
+| `gateway/` | Python BLE receiver, telemetry parser, and parser unit tests |
 | `.github/workflows/` | Firmware validation, build, and artifact packaging |
 | `tools/` | Windows firmware flashing helper |
 | `HARDWARE_INVENTORY.md` | Development hardware and sensor inventory |

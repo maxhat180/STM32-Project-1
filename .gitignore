@@ -16,6 +16,7 @@ compile_commands.json
 *.su
 
 # Python bytecode and test caches
+.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/

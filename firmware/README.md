@@ -1,6 +1,10 @@
 # Firmware
 
-STM32 firmware targets live in this directory.
+Firmware targets live in this directory, separated by board.
+
+The Nano BLE sensor prototype is under `nano_ble/`; see its
+[README](nano_ble/README.md) for manual upload and laptop receiver instructions.
+The sections below describe the STM32 target.
 
 The initial target is generated from a version-controlled STM32CubeMX `.ioc`
 configuration under `stm32_telemetry/`, using CMake and the STM32CubeF4 HAL.
