@@ -15,7 +15,7 @@ introduce lower-level work as it becomes useful.
 | Milestone | Work | Status |
 | --- | --- | --- |
 | 1. Board fundamentals | Manual upload, GPIO, blink patterns, `millis()`, serial input, stop/resume | Developer reports working; source reviewed |
-| 2. Acceleration acquisition | Initialize BMI270 through the official library; read X/Y/Z; understand g, gravity, axes, I2C, and sampling versus reporting rate | Next; initialization task assigned |
+| 2. Acceleration acquisition | Initialize BMI270 through the official library; read X/Y/Z; understand g, gravity, axes, I2C, and sampling versus reporting rate | X/Y/Z and 300 ms non-blocking interval working per developer; timing cleanup and static validation remain |
 | 3. Motion detection | Thresholds, filtering, hysteresis, and experiments with stationary/moving data | Planned |
 | 4. Firmware structure and reliability | Separate acquisition, detection, and reporting; handle initialization failure, stale data, and missed samples | Planned |
 | 5. BLE telemetry | Services, characteristics, notifications, and a Python receiver; reuse the earlier prototype where useful | Planned; earlier EverCold analog/BLE prototype exists separately |
@@ -32,12 +32,17 @@ magnetic-field measurements. The onboard IMU connects to the MCU over I2C. Use
 `Arduino_BMI270_BMM150`, not the original Sense board's `Arduino_LSM9DS1` library.
 No external wiring is needed.
 
-Start with [02_accelerometer](exercises/02_accelerometer/README.md). After successful
-initialization, introduce `IMU.accelerationAvailable()` and
-`IMU.readAcceleration(x, y, z)` with `float` variables. Acceleration is reported in
-g; a stationary supported board should have a vector magnitude near 1 g, rather
-than zero on every axis. Later distinguish sensor output rate from serial print
-rate and handle failed reads before using data.
+Initialization, availability/success checks, X/Y/Z output, and non-blocking
+300 ms rate control in [02_accelerometer](exercises/02_accelerometer/README.md)
+are working according to the developer. Axis/tilt observations and specific force
+were discussed. Datasheet practice covered sensor roles, dps, 8192 LSB/g at +/-4 g,
+raw-to-physical conversion, range/resolution, and accuracy versus resolution.
+
+Next: clean up timestamp type/initialization, record six-face static readings,
+compute acceleration magnitude, and compare datasheet settings with the installed
+library before motion detection. No captured numeric test results, measured sample
+timing, or calibration claim yet. Installed package versions remain unrecorded.
+Use [the continuation prompt](CONTINUE_PROMPT.md) to resume in another chat.
 
 Sources checked October 26, 2026:
 
