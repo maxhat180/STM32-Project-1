@@ -23,11 +23,20 @@ The NUCLEO-F446RE firmware currently provides:
 - pure sensor-conversion, exact-length STATUS parsing, and command framing modules;
 - initial USART2 interrupt reception, byte counting, and one-byte receive rearming.
 
-## Validation status - October 14, 2026
+## Validation status - October 26, 2026
 
-Debug and Release builds passed after the interrupt-reception changes, as reported
-by the developer. No firmware was flashed and no physical receive test was run.
-The last physical sensor-telemetry verification was October 11, 2026.
+Debug and Release builds previously passed after the interrupt-reception changes,
+as reported by the developer. On October 26, the developer launched the Debug ELF
+through VS Code/ST-LINK, programmed the board, and verified UART reception with a
+breakpoint before the receive counter increment: sending C produced byte 67 and
+counter 6; after continuing, the counter was 7. Reception had already handled
+earlier bytes, confirming receive rearming. This was a manual character test,
+not a sustained traffic, error-recovery, or command-response test.
+
+Sensor JSON telemetry was also observed on COM3. Intermittent temperature ADC
+excursions remain unexplained despite a comparatively stable DMM reading. A0
+grounding produced about 0-1 mV; adding 100 nF supply bypassing did not resolve
+the excursions. Calibration and reliable temperature accuracy are not established.
 
 The command frame is initialized once before the main loop. Received bytes are
 currently counted without being queued or passed to the framer. Buffering,

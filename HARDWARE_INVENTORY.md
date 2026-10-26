@@ -108,6 +108,23 @@ Manufacturer-listed contents:
 
 ## Other Previously Reported Hardware
 
+### Bench measurement update - October 26, 2026
+
+The SparkFun multimeter has arrived (recorded October 15). The user now also has
+banana-plug clip leads for the DMM. The original probe tips were too large to
+insert into breadboard sockets reliably; an extra male jumper from the desired
+contact strip provides an exposed contact for a clip. On October 26 the user
+measured 3V3-to-GND at 3.31 V and TMP36 output generally around 0.735-0.739 V.
+The meter displayed 0 V between Nucleo GND and the sensor ground strip.
+Intermittent ADC excursions remain unresolved; see firmware/README.md.
+
+- DC voltage: black lead in COM, red lead in the voltage socket, DC voltage mode;
+  connect across the two measurement nodes (for example, signal and shared GND).
+- DC current: power off, open the intended branch, and insert the meter in series
+  using the correct current socket/range and the meter's specified limits. Never
+  connect a meter in current mode across the supply rails. Return the red lead
+  to the voltage socket after measuring current.
+
 | Item | Quantity | Status |
 |---|---:|---|
 | Additional breadboard | 1 | User previously reported two breadboards total; only the one expected in the Seeed kit is currently documented by product contents. |

@@ -20,11 +20,15 @@ TMP36 + photoresistor -> STM32 ADC -> JSON over USART2 / ST-LINK USB -> host
 - GitHub Actions validation and Release cross-compilation, with checksummed
   ELF/BIN/HEX deployment packages and an ST-LINK flashing helper.
 - Initial interrupt-driven UART reception that counts incoming bytes and rearms
-  reception after each byte; Debug and Release builds pass. This receive path has
-  not yet been tested on hardware.
+  reception after each byte; Debug and Release builds previously passed. A manual
+  debugger test on October 26 verified reception of ASCII C (67), callback
+  execution, counting, and continued reception. Buffered command handling and
+  sustained receive reliability have not been verified.
 
 Sensor telemetry and programming a CI-built artifact have been physically
-verified. Bidirectional command handling is incomplete: reception does not yet
+verified. Intermittent temperature ADC excursions relative to DMM readings remain
+under investigation; calibrated accuracy is not established.
+Bidirectional command handling is incomplete: reception does not yet
 buffer bytes or dispatch frames to the parser, and UART-error recovery and
 partial-frame timeouts remain outstanding. Framer overflow rejection is covered
 by native tests; discard-until-newline recovery is implemented but has no
