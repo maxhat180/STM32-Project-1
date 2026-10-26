@@ -1,4 +1,17 @@
-# EverCold Nano BLE prototype
+# Arduino Nano 33 BLE Sense Rev2
+
+## Folder layout
+
+- [Learning plan and progress](LEARNING_PLAN.md): completed work and next milestones.
+- `exercises/`: incremental learning exercises, each with its own sketch folder
+  and brief README. Start with [01_blink](exercises/01_blink/README.md).
+- `EverColdAnalogTest/`: existing analog/BLE prototype, documented below.
+
+Save each exercise's main `.ino` file with the same name as its enclosing folder.
+Create later exercise folders as needed. All files belong to the existing
+repository rooted at `Embedded/`; do not initialize a separate Git repository here.
+
+## EverCold Nano BLE prototype
 
 Board: Arduino Nano 33 BLE Sense Rev2. This is a separate target from
 `../stm32_telemetry/` and is not built by the existing STM32 CI workflow.
