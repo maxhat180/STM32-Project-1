@@ -1,5 +1,101 @@
 # Where We Last Left Off
 
+## STM32 checkpoint - November 2, 2026
+
+This supersedes older STM32 continuation instructions. Nano work is separate.
+
+### Hardware validation completed by the user
+
+NUCLEO-F446RE, COM3, 115200 8-N-1, no flow control, PowerShell SerialPort.
+The user supplied board output; the assistant did not independently operate hardware.
+- STATUS accepted with LF and CRLF; invalid HELLO rejected, then STATUS succeeded.
+- Write("STA") produced no command reply; WriteLine("TUS") completed STATUS.
+- A 33-byte A payload produced ERR command too long; subsequent STATUS worked.
+- Twenty STATUS commands paced with 100 ms sleeps produced twenty replies, all
+  rx_dropped=0 and uart_errors=0; telemetry continued. This is a short paced test,
+  not a sustained-throughput guarantee.
+- A 200-byte A burst produced a frame-length error; subsequent STATUS at uptime
+  2046579 reported rx_dropped=0 uart_errors=0. Queue overflow was NOT induced.
+- VS Code STM32/ST-LINK debug programmed firmware/stm32_telemetry/build/Debug/
+  stm32_telemetry.elf and stopped at main.c:143 before HAL_Init. User continued,
+  reopened COM3, paused CPU, sent STATUS while halted, then resumed. Initial
+  confusion left CPU paused longer; queued host serial text included pre-reset
+  telemetry and a partial line. These are not clean post-reset measurement logs.
+- After resume: ERR RX loss; send newline then retry. A fresh LF followed by
+  STATUS yielded uptime_ms=34377 rx_dropped=0 uart_errors=1 schema=1. Another
+  STATUS at 77865 ms kept those counters unchanged; telemetry continued.
+  One debugger-induced UART receive-loss recovery case is verified. Hardware
+  overrun is inferred, not proven: SR/ErrorCode were not captured. The counter
+  also includes failed receive rearming. Software-queue overflow remains untested
+  on hardware. GPIO regression, long-duration load and partial-line timeout remain.
+
+No firmware source edits or new automated build/test runs occurred this session.
+Historical October 27 records report five C test executables, nine Python tests,
+Debug/Release builds passing. Earlier GitHub CI at a90b228 passed but did not cover
+then-uncommitted command integration. The session save includes that integration
+and its tests so it is reproducible from GitHub.
+
+### Learning and working preferences
+
+User understands frame reset and discard-through-newline resynchronization after
+review. HAL call tracing was confusing; keep the model at hardware -> HAL ISR ->
+our callback -> queue; main loop -> queue -> framer/parser -> reply. Enter HAL only
+for a specific debugging question. Distinguish UART hardware overrun from software
+queue rejection; an error path can process a pending byte before its error callback.
+User writes learning code. Explain briefly, ask one reasoning question/task, offer
+hints before solutions. Do not edit learning firmware without permission. Give
+PowerShell commands ONE LINE AT A TIME and wait for results. VS Code terminal
+serial setup has been unreliable; use PowerShell. Continue VS Code debugging;
+CubeIDE familiarity can be a later short exercise, not a prerequisite.
+
+### Next task: diagnose ADC discrepancy, not more UART features
+
+First exercise already assigned but NOT answered: open Core/Src/adc.c,
+MX_ADC1_Init; inspect ScanConvMode=ENABLE, NbrOfConversion=2 and channel/rank
+assignments. Ask which channel converts first and second. Then trace how main.c
+polls and retrieves the two results; establish expected timing and gather evidence
+before changing acquisition. Scan/poll sequencing is a hypothesis, not root cause.
+Do not mask the discrepancy with averaging or claim calibrated accuracy.
+
+Today's displayed temperature samples included temp_mv around 604-659 and
+converted 10.4-15.9 C. No simultaneous DMM/ambient measurement was supplied;
+this does not establish actual temperature or a new root cause. Earlier DMM
+comparisons, bypass-capacitor and grounded-input checks remain in historical notes.
+Verify current wiring and voltages before requesting sensor changes.
+
+After diagnosis: document/commit the verified baseline; nonblocking timing and
+state machines; timer-triggered ADC then DMA; I2C and SPI peripherals; Python UART
+validation/fault tests; CI and demonstration polish. Estimate after ADC fix: about
+4-7 weeks at 1-2 hours/day, hardware-dependent; useful demo earlier. Prioritize
+Phases 1-4; defer MQTT/cloud/PCB expansion.
+
+### Bench state at session end
+
+Last confirmed debugger state was RUNNING after resume, and PowerShell COM3 was
+open. Shutdown/port closure, debugger stop and unplugging were not confirmed.
+Check before the next session; do not assume the board is unplugged.
+
+## Latest Nano continuation point - October 26, 2026
+
+User paused after successful X/Y/Z acceleration acquisition and non-blocking rate
+control, then requested progress saved to GitHub and a prompt for another chat.
+Read firmware/nano_ble/CONTINUE_PROMPT.md for the complete continuation prompt,
+LEARNING_PLAN.md for the roadmap, and exercises/02_accelerometer/README.md for
+observations, validation limits, and remaining tasks.
+
+Saved code checks IMU initialization, availability, and read success; prints X/Y/Z
+at a 300 ms interval. User reports flashed firmware works and observed axis/tilt
+behavior; no numerical logs or independent assistant hardware tests. Datasheet
+practice covered dps, range/resolution, 8192 LSB/g at +/-4 g, unit conversion, and
+sensor roles. Specific force, gravity projection, and tilt inference explained.
+
+First task next session: guide the user to fix timestamp type/initialization
+(currently global uint time_now = millis()), remove unused setup-local floats,
+and name the interval. Then capture six-face static readings, compute magnitude,
+and compare datasheet ODR/range with the installed library. Continue to motion
+detection afterward. User writes the code; no complete replacement sketches.
+The source was preserved as written. STM32 continuation below remains separate.
+
 ## Latest STM32 continuation point - October 26, 2026
 
 This supersedes older STM32 next-action and validation notes. Nano/BLE work below

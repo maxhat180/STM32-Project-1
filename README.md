@@ -19,20 +19,24 @@ TMP36 + photoresistor -> STM32 ADC -> JSON over USART2 / ST-LINK USB -> host
   telemetry.
 - GitHub Actions validation and Release cross-compilation, with checksummed
   ELF/BIN/HEX deployment packages and an ST-LINK flashing helper.
-- Initial interrupt-driven UART reception that counts incoming bytes and rearms
-  reception after each byte; Debug and Release builds previously passed. A manual
-  debugger test on October 26 verified reception of ASCII C (67), callback
-  execution, counting, and continued reception. Buffered command handling and
-  sustained receive reliability have not been verified.
+- Buffered interrupt-driven UART reception with main-loop STATUS command handling,
+  malformed/overlong-line rejection, and resynchronization after receive loss.
+  Local Debug/Release builds and host tests passed on October 27. User-supplied
+  COM3 output then verified consecutive STATUS responses, invalid-command recovery
+  and overlong-frame recovery while telemetry continued. November 2 tests also
+  verified LF/CRLF, fragmented input, twenty paced commands and recovery from
+  one debugger-induced UART fault. Software-queue overflow remains unverified
+  on hardware.
 
 Sensor telemetry and programming a CI-built artifact have been physically
 verified. Intermittent temperature ADC excursions relative to DMM readings remain
 under investigation; calibrated accuracy is not established.
-Bidirectional command handling is incomplete: reception does not yet
-buffer bytes or dispatch frames to the parser, and UART-error recovery and
-partial-frame timeouts remain outstanding. Framer overflow rejection is covered
-by native tests; discard-until-newline recovery is implemented but has no
-dedicated recovery test.
+Buffered commands now use the existing framer and parser, with host coverage for
+boundaries, overflow, recovery, malformed input, and consecutive STATUS commands.
+One debugger-induced UART receive-loss recovery case is hardware-verified from
+user-supplied output; the exact hardware fault flag was not captured. Partial-frame
+timeouts remain outstanding. See firmware/stm32_telemetry/COMMANDS.md for the
+protocol and manual verification steps.
 
 ## Repository layout
 
@@ -49,17 +53,15 @@ dedicated recovery test.
 See [firmware/README.md](firmware/README.md) for build commands and validation
 status.
 
-## Planned extensions
+## Next milestones
 
-- A NUCLEO-connected temperature/light sensor PCB, followed by a standalone MCU
-  board with power, programming, and test access.
-- Buffered UART commands with error recovery and timeouts.
-- A local serial-to-MQTT gateway and broker, followed by server-side storage and
-  dashboards.
-- Digital sensor interfaces, static analysis, hardware-in-the-loop testing, and
-  release integrity checks.
+1. Diagnose the unresolved ADC temperature discrepancy and record measurements.
+2. Replace blocking timing with nonblocking state machines; introduce timers and DMA.
+3. Integrate I2C and SPI peripherals and validate communication-failure recovery.
+4. Automate UART hardware tests and polish CI, validation reports and demonstrations.
 
-These extensions are planned; they are not implemented capabilities.
+MQTT, server dashboards and custom PCB design are deferred until the firmware and
+hardware-validation milestones are established. These are plans, not completed work.
 
 ## Gateway telemetry validation
 

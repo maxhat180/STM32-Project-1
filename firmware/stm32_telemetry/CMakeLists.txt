@@ -48,6 +48,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     App/Src/sensor_conversion.c
     App/Src/command_parser.c
     App/Src/command_framer.c
+    # HAL-independent receive queue for the upcoming UART integration.
+    App/Src/uart_rx_buffer.c
+    App/Src/command_service.c
 )
 
 # Add include paths

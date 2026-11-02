@@ -1,5 +1,19 @@
 # Firmware
 
+## Latest hardware checkpoint - November 2, 2026
+
+User-supplied COM3 output verified LF/CRLF STATUS, fragmented commands,
+invalid/overlong-line recovery, twenty commands paced with 100 ms sleeps, and
+one debugger-induced UART receive-loss recovery. After a fresh LF, STATUS reported
+rx_dropped=0 uart_errors=1; a later STATUS kept those counters unchanged and
+telemetry continued. The exact UART error flag was not captured. A 200-byte
+burst caused frame overflow, not software-queue overflow. Sustained throughput,
+GPIO regression and software-queue overflow remain unverified on hardware.
+See [COMMANDS.md](stm32_telemetry/COMMANDS.md) for evidence and limitations.
+No new automated tests/builds were run in this session; October 27 results below
+are historical. Next: investigate ADC scan/poll sequencing and the unresolved
+TMP36/DMM discrepancy before expanding functionality.
+
 Firmware targets live in this directory, separated by board.
 
 The Nano BLE sensor prototype is under `nano_ble/`; see its
@@ -21,9 +35,33 @@ The NUCLEO-F446RE firmware currently provides:
 - two-channel ADC1 polling for a TMP36 on PA0 and photoresistor divider on PA1;
 - integer temperature conversion and two-second, schema-1 JSON sensor telemetry;
 - pure sensor-conversion, exact-length STATUS parsing, and command framing modules;
-- initial USART2 interrupt reception, byte counting, and one-byte receive rearming.
+- buffered USART2 interrupt reception and main-loop STATUS responses.
 
-## Validation status - October 26, 2026
+## Current command checkpoint - October 27, 2026
+
+The receive buffer now feeds the existing framer and parser through a small
+HAL-independent command service. STATUS responses and errors are transmitted only
+from the main loop. Receive loss flushes queued data and requires a fresh newline
+before accepting another command. UART errors request main-loop receive recovery.
+Sensor acquisition, periodic JSON, LED and button logic were preserved.
+
+Verified locally: all five native C test executables and all nine Python parser
+tests passed; GNU Arm GCC 14.3.1 Debug and Release builds passed. Release reports
+12,148 bytes flash and 2,280 bytes RAM. Host tests cover buffer limits, frame limits,
+overflow/discard recovery, malformed commands, fragmented and consecutive STATUS
+commands. They do not verify HAL fault recovery, interrupt timing, physical UART
+reliability or hardware behavior. The assistant did not flash or test the board.
+
+The user subsequently supplied COM3 output verifying two consecutive STATUS
+responses, invalid-command recovery and slow 33-character overlong-frame recovery.
+Telemetry continued, and all displayed responses reported zero rx_dropped and
+uart_errors. Receive-queue overflow, UART-fault recovery and sustained traffic
+remain unverified on hardware. See COMMANDS.md for the recorded evidence and limits.
+
+See [COMMANDS.md](stm32_telemetry/COMMANDS.md) for expected responses and checks.
+Partial-frame timeouts and the USART2 NVIC entry in CubeMX remain outstanding.
+
+## Historical validation status - October 26, 2026
 
 Debug and Release builds previously passed after the interrupt-reception changes,
 as reported by the developer. On October 26, the developer launched the Debug ELF
@@ -50,6 +88,21 @@ initialization, ordinary bytes, delimiters, and capacity/overflow rejection, but
 do not establish discard-until-newline recovery or a valid command after overflow.
 
 ## Build
+
+### Earlier receive-buffer checkpoint - October 27, 2026
+
+A HAL-independent `uart_rx_buffer` module now provides initialization, push, and
+pop operations. Its 64-byte array holds up to 63 unread bytes; a full buffer
+rejects the newest byte. Lock-free C11 atomic indices support one interrupt
+producer and one main-loop consumer. Initialization must happen before use.
+
+All four native C test executables passed locally, including new checks for
+empty/full behavior, byte order, wraparound, overflow rejection and reuse.
+A fresh ARM Debug firmware build also passed with GNU Arm GCC 14.3.1.
+These host tests do not establish interrupt timing or concurrent hardware behavior.
+At that checkpoint the module was compiled but not yet connected to UART reception
+or command handling; the current command checkpoint above supersedes that limit.
+No firmware was flashed and no hardware test was performed for this checkpoint.
 
 From `firmware/stm32_telemetry`:
 

@@ -26,7 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include "sensor_conversion.h"
-#include "command_framer.h"
+#include "command_service.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,6 +52,10 @@
 /* USER CODE BEGIN PV */
 static volatile uint32_t uart_rx_count = 0U;
 static uint8_t uart_rx_byte = 0U;
+/* Queue shared with the ISR; restart/error flags are read by the main loop. */
+static CommandService commands;
+static volatile uint32_t uart_rx_errors = 0U;
+static volatile bool uart_rx_restart_pending = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,9 +67,61 @@ static void UART_Write(const char *message, uint16_t length);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/* message: bytes to transmit; length: byte count. Main-loop calls only. */
 static void UART_Write(const char *message, uint16_t length)
 {
   (void)HAL_UART_Transmit(&huart2, (const uint8_t *)message, length, 100U);
+}
+
+/* No parameters: recover RX and dispatch one bounded batch in the main loop. */
+static void UART_ProcessCommands(void)
+{
+  if (uart_rx_restart_pending)
+  {
+    /* With no DMA, abort only resets receive state; it never transmits. */
+    const uint32_t irq_state = __get_PRIMASK();
+    __disable_irq();
+    (void)HAL_UART_AbortReceive(&huart2);
+    __HAL_UART_CLEAR_OREFLAG(&huart2);
+    command_service_rx_lost(&commands);
+    uart_rx_restart_pending =
+        HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1U) != HAL_OK;
+    __set_PRIMASK(irq_state);
+  }
+
+  const CommandEvent event = command_service_poll(&commands);
+  if (event == COMMAND_EVENT_STATUS)
+  {
+    char response[128];
+    const int length = snprintf(response, sizeof(response),
+        "STATUS OK uptime_ms=%lu rx_dropped=%u uart_errors=%lu schema=1\r\n",
+        (unsigned long)HAL_GetTick(),
+        atomic_load_explicit(&commands.dropped, memory_order_relaxed),
+        (unsigned long)uart_rx_errors);
+    if (length > 0 && length < (int)sizeof(response))
+    {
+      UART_Write(response, (uint16_t)length);
+    }
+  }
+  else if (event != COMMAND_EVENT_NONE)
+  {
+    static const char invalid[] = "ERR invalid command\r\n";
+    static const char too_long[] = "ERR command too long\r\n";
+    static const char loss[] = "ERR RX loss; send newline then retry\r\n";
+    const char *message = invalid;
+    uint16_t length = (uint16_t)(sizeof(invalid) - 1U);
+    if (event == COMMAND_EVENT_TOO_LONG)
+    {
+      message = too_long;
+      length = (uint16_t)(sizeof(too_long) - 1U);
+    }
+    else if (event == COMMAND_EVENT_RX_LOSS)
+    {
+      message = loss;
+      length = (uint16_t)(sizeof(loss) - 1U);
+    }
+    UART_Write(message, length);
+  }
 }
 
 /* USER CODE END 0 */
@@ -103,8 +159,8 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  CommandFrame command_frame;
-  command_frame_init(&command_frame);
+  /* Initialize the queue and framing state before the first receive interrupt. */
+  command_service_init(&commands);
   const HAL_StatusTypeDef rx_status = HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1U);
 
   if (rx_status != HAL_OK)
@@ -131,6 +187,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    UART_ProcessCommands();
     const uint32_t now_ms = HAL_GetTick();
     if ((now_ms - last_uart_heartbeat_ms) >= UART_HEARTBEAT_INTERVAL_MS)
     {
@@ -282,19 +339,34 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/* huart: HAL peripheral that completed reception; copy before rearming. */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart == &huart2)
   {
     uart_rx_count++;
+    command_service_receive(&commands, uart_rx_byte);
 
     const HAL_StatusTypeDef rx_status =
         HAL_UART_Receive_IT(&huart2, &uart_rx_byte, 1U);
 
     if (rx_status != HAL_OK)
     {
-      Error_Handler();
+      uart_rx_errors++;
+      command_service_rx_lost(&commands);
+      uart_rx_restart_pending = true;
     }
+  }
+}
+
+/* huart: peripheral reporting a UART fault; defer recovery to the main loop. */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  if (huart == &huart2)
+  {
+    uart_rx_errors++;
+    command_service_rx_lost(&commands);
+    uart_rx_restart_pending = true;
   }
 }
 /* USER CODE END 4 */
